@@ -122,13 +122,15 @@ def test_model(model, test_loader):
     c_predictions = []
     c_labels = []
 
+    print("Testing the model...")
+
     with torch.no_grad():
-        for batch_nr, (inputs, labels) in enumerate(test_loader):
+        for batch_nr, (inputs, labels) in enumerate(tqdm(test_loader)):
             inputs = inputs.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
 
-            with torch.autocast(device_type=device.type):
-                prediction = model(inputs)
+            # with torch.autocast(device_type=device.type):
+            prediction = model(inputs)
 
             guess = torch.argmax(prediction, dim=1)
             correct += (guess == labels).sum().item()
@@ -139,15 +141,17 @@ def test_model(model, test_loader):
 
     accuracy = correct / guesses if guesses > 0 else 0
 
+    confusion_matrix = torch.zeros(1)
+
     # Flatten mini-batches into one big set.
-    c_predictions = torch.cat(c_predictions).cpu()
-    c_labels = torch.cat(c_labels).cpu()
+    # c_predictions = torch.cat(c_predictions).cpu()
+    # c_labels = torch.cat(c_labels).cpu()
 
-    # Find the number of classes
-    num_classes = int(torch.max(torch.cat([c_predictions, c_labels])).item()) + 1
-    confusion_matrix = torch.zeros(num_classes, num_classes)
+    # # Find the number of classes
+    # num_classes = int(torch.max(torch.cat([c_predictions, c_labels])).item()) + 1
+    # confusion_matrix = torch.zeros(num_classes, num_classes)
 
-    for label, prediction in zip(c_labels, c_predictions):
-        confusion_matrix[label, prediction] += 1
+    # for label, prediction in zip(c_labels, c_predictions):
+    #     confusion_matrix[label, prediction] += 1
 
     return accuracy, confusion_matrix

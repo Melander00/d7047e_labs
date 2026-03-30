@@ -103,6 +103,6 @@ def prepare_alexnet_loaders(
 
     train_loader = DataLoader(cifar_train, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     val_loader = DataLoader(cifar_val, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(cifar_test, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(cifar_test, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     return train_loader, val_loader, test_loader

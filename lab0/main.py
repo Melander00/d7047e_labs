@@ -73,17 +73,14 @@ def main():
     writer.close()
 
 
-def task2():
+def task2_ft():
     learning_rate = 1e-4
     num_epochs = 30
     batch_size = 128
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = torchvision.models.alexnet().to(device)
-
-    model.classifier = nn.Sequential(
-        nn.Linear(9216, 10)
-    )
+    model = torchvision.models.alexnet(weights=torchvision.models.AlexNet_Weights.DEFAULT)
+    model.classifier[6] = nn.Linear(4096, 10)
 
     model = model.to(device)
 
@@ -111,5 +108,45 @@ def task2():
     writer.add_scalar("Accuracy/Test", test_accuracy)
     writer.close()
 
+def task2_fe():
+    learning_rate = 1e-4
+    num_epochs = 30
+    batch_size = 128
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = torchvision.models.alexnet(weights=torchvision.models.AlexNet_Weights.DEFAULT)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    model.classifier[6] = nn.Linear(4096, 10)
+
+    model = model.to(device)
+
+    loaders = prepare_alexnet_loaders(batch_size=batch_size)
+
+    criterion = nn.CrossEntropyLoss()
+    # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    best_model, losses, accuracies, test_accuracy, cm = run_training(
+        model=model,
+        loaders=loaders,
+        criterion=criterion,
+        optimizer=optimizer,
+        num_epochs=num_epochs
+    )
+
+    writer = SummaryWriter(log_dir="runs/cifar10_alexnet_fe")
+
+    for i in range(num_epochs):
+        writer.add_scalar('Loss/Train', losses[0][i], i)
+        writer.add_scalar('Accuracy/Train', accuracies[0][i], i)
+        writer.add_scalar('Loss/Val', losses[1][i], i)
+        writer.add_scalar('Accuracy/Val', accuracies[1][i], i)
+    writer.add_scalar("Accuracy/Test", test_accuracy)
+    writer.close()
+
 if __name__ == "__main__":
-    task2()
+    task2_ft()
+    task2_fe()
