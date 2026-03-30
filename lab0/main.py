@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchvision
 from cifar_model import SimpleCIFAR10
 from model_trainer import test_model, train_model
-from preprocessing import prepare_loaders
+from preprocessing import prepare_alexnet_loaders, prepare_loaders
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -40,18 +41,18 @@ def run_training(
 
 def main():
 
-    learning_rate = 1e-2
-    num_epochs = 30 
+    learning_rate = 1e-4
+    num_epochs = 30
     batch_size = 128
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = SimpleCIFAR10().to(device)
+    model = SimpleCIFAR10(activation="tanh").to(device)
 
     loaders = prepare_loaders(batch_size=batch_size)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     best_model, losses, accuracies, test_accuracy, cm = run_training(
         model=model,
@@ -61,7 +62,46 @@ def main():
         num_epochs=num_epochs
     )
 
-    writer = SummaryWriter(log_dir="runs/cifar10_sgd")
+    writer = SummaryWriter(log_dir="runs/cifar10_tanh")
+
+    for i in range(num_epochs):
+        writer.add_scalar('Loss/Train', losses[0][i], i)
+        writer.add_scalar('Accuracy/Train', accuracies[0][i], i)
+        writer.add_scalar('Loss/Val', losses[1][i], i)
+        writer.add_scalar('Accuracy/Val', accuracies[1][i], i)
+    writer.add_scalar("Accuracy/Test", test_accuracy)
+    writer.close()
+
+
+def task2():
+    learning_rate = 1e-4
+    num_epochs = 30
+    batch_size = 128
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = torchvision.models.alexnet().to(device)
+
+    model.classifier = nn.Sequential(
+        nn.Linear(9216, 10)
+    )
+
+    model = model.to(device)
+
+    loaders = prepare_alexnet_loaders(batch_size=batch_size)
+
+    criterion = nn.CrossEntropyLoss()
+    # optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    best_model, losses, accuracies, test_accuracy, cm = run_training(
+        model=model,
+        loaders=loaders,
+        criterion=criterion,
+        optimizer=optimizer,
+        num_epochs=num_epochs
+    )
+
+    writer = SummaryWriter(log_dir="runs/cifar10_alexnet_ft")
 
     for i in range(num_epochs):
         writer.add_scalar('Loss/Train', losses[0][i], i)
@@ -72,4 +112,4 @@ def main():
     writer.close()
 
 if __name__ == "__main__":
-    main()
+    task2()
