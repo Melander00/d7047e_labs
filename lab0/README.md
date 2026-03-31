@@ -19,7 +19,8 @@ lab0/
 
 | Parameter | Value |
 |---|---|
-| Learning Rate | 0.0001 |
+| Learning Rate (CIFAR-10 / AlexNet) | 0.0001 |
+| Learning Rate (MNIST / SVHN) | 0.001 |
 | Batch Size | 128 |
 | Epochs | 30 (CIFAR-10 / AlexNet), 20 (MNIST / SVHN) |
 | Optimizer | Adam (main runs), SGD (comparison run) |
