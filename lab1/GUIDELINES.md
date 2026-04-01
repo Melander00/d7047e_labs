@@ -44,13 +44,23 @@ Example entry in the review.json file:
 }
 ```
 
-We will do sentiment analysis based on `stars` and `text`. It will be 5 different labels, one for each star level.
+We will do sentiment analysis based on `stars` and `text`.
 
 ## Use dataset
 
 ### Overview
 
 The main function is `prepare_yelp_loaders` in `dataset/loaders.py`. It is designed to be used by both the ANN and the Transformer models. It generates consistent data loaders with deterministic split to be used in the train loop.
+
+The labels mapping are the following:
+
+| **Stars** | **Label** | **Sentiment** |
+| --------- | --------- | ------------- |
+| 1, 2      | -1        | Bad           |
+| 3         | 0         | Neutral       |
+| 4,5       | 1         | Good          |
+
+There may be some bias since we merge two "star-ratings" into one for two sentiments but there is only one for neutral.
 
 Each model may need different processing steps depending on needs. Below are instructions how to utilize the loader function.
 
