@@ -31,9 +31,7 @@ Example entry in the review.json file:
     "date": "2016-03-09",
 
     // string, the review itself
-    "text": "Great place to hang out after work: the prices are decent, and the ambience is fun. It's a
-bit loud, but very lively. The staff is friendly, and the food is good. They have a good selection of
-drinks.",
+    "text": "Great place to hang out after work: the prices are decent, and the ambience is fun. It's a bit loud, but very lively. The staff is  friendly, and the food is good. They have a good selection of drinks.",
 
     // integer, number of useful votes received
     "useful": 0,
