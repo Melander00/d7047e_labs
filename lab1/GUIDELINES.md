@@ -127,127 +127,68 @@ Transformers may use predefined tokenizers such as HuggingFace. Check related do
 
 ANN needs to build a custom tokenizer. It will need to use its own vocab as well as returning a tensor in a format that the model then can utilize.
 
-<!--
+## Training
 
+### Overview
 
-Here’s a clean, detailed **GUIDELINES.md** you can give to the other teams. It explains exactly how to use your `prepare_yelp_loaders`, the tokenizer, `max_len`, and preprocessing.
+The training structure has been modified a bit. What's new is that we save metadata of the models (losses, accuracies, etc.) as JSON files. We also save the models themselves as torch tensors. This is useful because if we want to continue training a model we can start from the last epoch. E.g. if we have trained a model for 50 epochs but later realized we wanted 100 epochs we only have to train on those last 50 epochs.
+The models are saved under `output/MODEL_NAME/ITERATION`.
 
----
-
-# 📝 Yelp Dataset Guidelines
-
-## Overview
-
-The `prepare_yelp_loaders` function and `YelpDataset` class are designed to **support both ANN and Transformer models** with a shared dataset and consistent train/val/test splits.
-
-Teams should use this function to load data while respecting **model-specific preprocessing**.
-
----
-
-## 1. Import the loader
+### 1. Import
 
 ```python
-from dataset.loaders import prepare_yelp_loaders
+from training.training import develop_model, continue_model_training
 ```
 
----
+### 2. Parameters
 
-## 2. Parameters
+#### `develop_model`
 
----
+| Parameter          | Type                                        | Description                                                     |
+| ------------------ | ------------------------------------------- | --------------------------------------------------------------- |
+| `model`            | `nn.Module`                                 | The PyTorch model to train.                                     |
+| `loaders`          | `tuple[DataLoader, DataLoader, DataLoader]` | Tuple containing `(train_loader, val_loader, test_loader)`.     |
+| `criterion`        | callable                                    | Loss function used during training and evaluation.              |
+| `optimizer`        | `torch.optim.Optimizer`                     | Optimizer used to update model parameters.                      |
+| `model_name`       | str                                         | Name of the model (used for logging and saving outputs).        |
+| `num_epochs`       | int                                         | Number of epochs to train the model.                            |
+| `iteration_number` | int                                         | Version/iteration identifier for saving outputs (default: `0`). |
 
-## 3. Using Transformers
+#### `continue_model_training`
 
-Transformers require a tokenizer (Hugging Face or equivalent).
+| Parameter           | Type                                        | Description                                                                               |
+| ------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `model`             | `nn.Module`                                 | The PyTorch model to continue training. Must match the saved model architecture.          |
+| `optimizer`         | `torch.optim.Optimizer`                     | Optimizer instance. Its state will be overwritten from the saved checkpoint.              |
+| `loaders`           | `tuple[DataLoader, DataLoader, DataLoader]` | Tuple containing `(train_loader, val_loader, test_loader)`.                               |
+| `model_name`        | str                                         | Name of the model (used to locate saved checkpoints).                                     |
+| `iteration_number`  | int                                         | Identifier of the saved run to resume from. Must match an existing output directory.      |
+| `criterion`         | callable                                    | Loss function used during training and evaluation.                                        |
+| `num_epochs`        | int                                         | Number of additional epochs to train the model.                                           |
+| `new_learning_rate` | float                                       | A new learning rate for the optimizer. Set to `None` if you want to keep equal as before. |
+| `load_optimizer`    | boolean                                     | Set to `False` if you don't want to load the params from the saved optimizer.             |
 
-```python
-from transformers import AutoTokenizer
+### 3. Usage
 
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+Use the functions as normal.
 
-train_loader, val_loader, test_loader = prepare_yelp_loaders(
-    batch_size=16,
-    tokenizer=tokenizer,
-    max_len=128
-)
-```
+⚠️ NOTE! These functions do not store any information for Tensorboard. They return a metadata object that you can use to write to tensorboard runs. The metadata fields are
 
-- `text_preprocessing` can remain the default (`lambda x: x`) because Transformers handle tokenization internally.
-- The dataset returns a dictionary:
-
-```python
+```json
+// output/MODEL_NAME/ITERATION_NUMBER/metadata.json
 {
-    "input_ids": torch.tensor([...]),
-    "attention_mask": torch.tensor([...]),
-    "labels": torch.tensor(label)
+    "model_name": string, // User defined name
+    "num_epochs": int, // Total amount of epochs trained.
+    "training_time": float, // Seconds spent training
+    "best_val_loss": float, // Best model's validation loss
+
+    "train_loss": list[float],
+    "train_accuracy": list[float],
+    "val_loss": list[float],
+    "val_accuracy": list[float],
+
+    "test_loss": test_loss, // Test loss of best model
+    "test_accuracy": test_accuracy, // Test accuracy of best model
+    "confusion_matrix": confusion_matrix, // CM of best model
 }
 ```
-
-- `DataLoader` batches will have shape `(batch_size, max_len)` for `input_ids`.
-
----
-
-## 4. Using ANN
-
-ANNs require a **custom tokenizer** and vocabulary.
-
-### Step 1: Build a vocabulary
-
-```python
-def build_vocab(texts, min_freq=1):
-    from collections import Counter
-    counter = Counter()
-    for text in texts:
-        for word in text.lower().split():
-            counter[word] += 1
-    vocab = {"<PAD>": 0, "<UNK>": 1}
-    idx = 2
-    for word, freq in counter.items():
-        if freq >= min_freq:
-            vocab[word] = idx
-            idx += 1
-    return vocab
-```
-
-### Step 2: Create preprocessing function
-
-```python
-def ann_tokenizer(text, vocab, max_len=128):
-    tokens = [vocab.get(w, vocab["<UNK>"]) for w in text.lower().split()]
-    tokens = tokens[:max_len] + [vocab["<PAD>"]] * max(0, max_len - len(tokens))
-    return torch.tensor(tokens, dtype=torch.long)
-```
-
-### Step 3: Load dataset
-
-```python
-train_loader, val_loader, test_loader = prepare_yelp_loaders(
-    batch_size=64,
-    tokenizer=None,  # ANN does not use HF tokenizer
-    max_len=100,
-    text_preprocessing=lambda x: ann_tokenizer(x, vocab, max_len=100)
-)
-```
-
-- Each sample returned is a tuple `(input_tensor, label_tensor)`
-- The `input_tensor` can be fed directly to the embedding layer.
-
----
-
-## 5. Notes / Best Practices
-
-- **Keep `max_len` consistent** across ANN and Transformer for fair comparison.
-- **Labels are always `torch.tensor`**, compatible with loss functions.
-- Transformers automatically handle padding and attention masks; ANN preprocessing must include padding.
-- Use the `text_preprocessing` argument to apply **model-specific preprocessing** (lowercasing, punctuation removal, etc.)
-- DataLoader batching is lazy, so large datasets (~1GB) are supported.
-
----
-
-This ensures **all teams use the same dataset, same splits**, and only differ in preprocessing/tokenization logic.
-
----
-
-If you want, I can also add a **diagram showing ANN vs Transformer flow using `prepare_yelp_loaders`**, which helps visually explain the workflow to other teams.
-
-Do you want me to do that? -->
