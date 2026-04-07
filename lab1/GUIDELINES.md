@@ -1,5 +1,18 @@
 # Guidelines from preprocessing
 
+## Provided datasets
+
+To use the amazon reviews provided in Canvas, download both the 1K and the 25K .txt file. Put both files under `lab1/data/amazon_raw/`. The structure should look like this (after downloading the yelp dataset, instructions are below): 
+```
+lab1
+└── data
+    ├── amazon_raw
+    │   ├── amazon_cells_labelled.txt
+    │   └── amazon_cells_labelled_LARGE_25K.txt
+    └── yelp_raw
+        └── yelp_academic_dataset_review.json
+```
+
 ## Download dataset
 
 We will use the Yelp Review public dataset hosted on [their website](https://business.yelp.com/data/resources/open-dataset/). Follow these instructions to download and prepare the dataset for usage:
@@ -8,7 +21,7 @@ NOTE! The dataset is around 5 GB uncompressed json and ?? GB as tensors.
 
 1. Download the dataset at [https://business.yelp.com/data/resources/open-dataset/](https://business.yelp.com/data/resources/open-dataset/). Click the download JSON button.
 2. Extract the json files from `yelp_dataset.tar` inside the downloaded file.
-3. Copy the `yelp_academic_dataset_review.json` file into `/lab1/data/yelp_raw`.
+3. Copy the `yelp_academic_dataset_review.json` file into `lab1/data/yelp_raw`.
 4. The first time you run the models with this dataset it will preprocess the json into tensors and save to disk.
 
 Example entry in the review.json file:
@@ -50,24 +63,29 @@ We will do sentiment analysis based on `stars` and `text`.
 
 ### Overview
 
-The main function is `prepare_yelp_loaders` in `dataset/loaders.py`. It is designed to be used by both the ANN and the Transformer models. It generates consistent data loaders with deterministic split to be used in the train loop.
+The main functions are `prepare_yelp_loaders` and `prepare_amazon_loaders` in `dataset/loaders.py`. They are designed to be used by both the ANN and the Transformer models. They generate consistent data loaders with deterministic split to be used in the train loop.
 
 The labels mapping are the following:
 
-| **Stars** | **Label** | **Sentiment** |
+<!-- | **Stars** | **Label** | **Sentiment** |
 | --------- | --------- | ------------- |
 | 1, 2      | -1        | Bad           |
 | 3         | 0         | Neutral       |
+| 4,5       | 1         | Good          | -->
+
+| **Stars** | **Label** | **Sentiment** |
+| --------- | --------- | ------------- |
+| 1, 2      | 0        | Bad           |
 | 4,5       | 1         | Good          |
 
-There may be some bias since we merge two "star-ratings" into one for two sentiments but there is only one for neutral.
+<!-- There may be some bias since we merge two "star-ratings" into one for two sentiments but there is only one for neutral. -->
 
 Each model may need different processing steps depending on needs. Below are instructions how to utilize the loader function.
 
 ### 1. Import the loader
 
 ```python
-from dataset.loaders import prepare_yelp_loaders
+from dataset.loaders import prepare_yelp_loaders, prepare_amazon_loaders
 ```
 
 ---
@@ -83,6 +101,8 @@ from dataset.loaders import prepare_yelp_loaders
 | `tokenizer`          | callable or `None` | Preprocessing/tokenization function for your model.                                                          |
 | `max_len`            | int                | Maximum sequence length (padding/truncation). For fair comparison don't change this value from default (128) |
 | `text_preprocessing` | callable or `None` | Optional text preprocessing function (lowercase, remove punctuation)                                         |
+
+The amazon loader also has a parameter `use_25k_set` which determines whether the 1K or 25K dataset will be used.
 
 ### 3. Precompute
 
