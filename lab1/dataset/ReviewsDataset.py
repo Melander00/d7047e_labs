@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-class YelpDataset(Dataset):
+class ReviewDataset(Dataset):
     def __init__(self, file_path, tokenizer=None, max_len=128, sample_fraction=1.0, text_preprocessing=lambda x: x):
         self.file_path = file_path
         self.tokenizer = tokenizer
