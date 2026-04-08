@@ -45,7 +45,7 @@ def load_prep_data(text_with_data="amazon_cells_labelled.txt"):
 
     # get data, pre-process and split
     base_dir = os.path.dirname(__file__)
-    file_path = os.path.join(base_dir, "amazon_cells_labelled.txt")
+    file_path = os.path.join(base_dir, text_with_data)
 
 
     data = pd.read_csv(file_path, delimiter='\t', header=None)
@@ -62,7 +62,7 @@ def load_prep_data(text_with_data="amazon_cells_labelled.txt"):
     )
 
     # vectorize data using TFIDF and transform for PyTorch for scalability
-    word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2), max_features=50000, max_df=0.5, use_idf=True, norm='l2')
+    word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2), max_features=20000, max_df=0.5, use_idf=True, norm='l2')
     training_data = word_vectorizer.fit_transform(training_data)        # transform texts to sparse matrix
     training_data = training_data.todense()                             # convert to dense matrix for Pytorch
     vocab_size = len(word_vectorizer.vocabulary_)
@@ -81,7 +81,7 @@ def load_prep_data_lstm(text_with_data="amazon_cells_labelled.txt"):
     else:
         print("larger data LSTM")
     base_dir = os.path.dirname(__file__)
-    file_path = os.path.join(base_dir, "amazon_cells_labelled.txt")
+    file_path = os.path.join(base_dir, text_with_data)
 
     data = pd.read_csv(file_path, delimiter='\t', header=None)
     data.columns = ['Sentence', 'Class']
