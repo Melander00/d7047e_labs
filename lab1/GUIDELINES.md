@@ -121,7 +121,7 @@ This is the dataset `__getitem__` function
 
 ```python
 def __getitem__(self, idx):
-    with open(self.file_path, "r") as f:
+    with open(self.file_path, "r", encoding="utf-8") as f:
         f.seek(self.offsets[idx])
         line = f.readline()
         sample = json.loads(line)
@@ -129,7 +129,8 @@ def __getitem__(self, idx):
     text = sample["text"]
     label = sample["label"]
 
-    text = self.text_preprocessing(text)
+    if self.text_preprocessing is not None:
+        text = self.text_preprocessing(text)
 
     if self.tokenizer:
         encoded = self.tokenizer(

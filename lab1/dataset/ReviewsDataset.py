@@ -54,6 +54,10 @@ class ReviewDataset(Dataset):
                 max_length=self.max_len,
                 return_tensors="pt"
             )
-            return {k: v.squeeze(0) for k, v in encoded.items()}, torch.tensor(label)
+
+            input_ids = encoded["input_ids"].squeeze(0)
+            attention_mask = encoded["attention_mask"].squeeze(0)
+
+            return torch.stack([input_ids, attention_mask], dim=0), torch.tensor(label)
 
         return text, torch.tensor(label)

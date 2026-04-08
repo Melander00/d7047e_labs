@@ -29,9 +29,9 @@ def split_dataset(dataset: Dataset, splits=[0.7,0.15,0.15]):
     return subsets
 
 def prepare_loaders(subsets: list[Subset], batch_size: int):
-    train_loader = DataLoader(subsets[0], batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(subsets[1], batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(subsets[2], batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(subsets[0], batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(subsets[1], batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(subsets[2], batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     return train_loader, val_loader, test_loader
 
