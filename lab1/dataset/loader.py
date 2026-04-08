@@ -63,7 +63,7 @@ def prepare_yelp_loaders(
     subsets = split_dataset(dataset, splits=splits)
     loaders = prepare_loaders(subsets, batch_size=batch_size)
 
-    return loaders
+    return loaders, dataset
 
 
 
@@ -115,4 +115,4 @@ def prepare_amazon_loaders(
     subsets = split_dataset(dataset, splits=splits)
     loaders = prepare_loaders(subsets, batch_size=batch_size)
 
-    return loaders
+    return loaders, dataset

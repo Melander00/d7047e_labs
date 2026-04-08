@@ -104,6 +104,13 @@ from dataset.loaders import prepare_yelp_loaders, prepare_amazon_loaders
 
 The amazon loader also has a parameter `use_25k_set` which determines whether the 1K or 25K dataset will be used.
 
+### 3. Return
+The functions return loaders and dataset.
+```python
+(train_loader, val_loader, test_loader), dataset = prepare_yelp_loaders()
+```
+The dataset can then be used to iterate over every text entry to for example create a vocab.
+
 ### 3. Precompute
 
 As long as you followed the Download Dataset instructions at the top, the first call (or any subsequent with different `entries` value) will generate a precomputed json file containing text and labels. This allows for lazy-loading which speeds up training and repeated runs.
