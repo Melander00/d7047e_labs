@@ -13,7 +13,7 @@ def load_amazon_reviews(
 ):
     reviews = []
 
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         for i, line in enumerate(tqdm(file, desc="Loading reviews", unit=" reviews", leave=False, disable=not show_progress_bar)):
             text, label = line.split("\t")
             label = int(label.replace("\n", ""))
@@ -29,7 +29,7 @@ def save_extracts_to_disk(
     show_progress_bar = True,
 ):
     os.makedirs(outdir, exist_ok=True)
-    with open(os.path.join(outdir, outname), "w") as file:
+    with open(os.path.join(outdir, outname), "w", encoding="utf-8") as file:
         for text, label in tqdm(extracts, desc="Saving data", unit=" reviews", leave=False, disable=not show_progress_bar):
             entry = {
                 "text": text, 

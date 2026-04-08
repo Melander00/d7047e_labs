@@ -18,7 +18,7 @@ def load_yelp_reviews_json(
     """
     reviews = []        
 
-    with open(json_file, "r") as file:
+    with open(json_file, "r", encoding="utf-8") as file:
         for i, line in enumerate(tqdm(file, desc="Loading reviews", unit=" reviews", leave=False, disable=not show_progress_bar)):
             if max_lines >= 0 and i >= max_lines:
                 break
@@ -65,7 +65,7 @@ def save_extracts_to_disk(
     show_progress_bar = True,
 ):
     os.makedirs(outdir, exist_ok=True)
-    with open(os.path.join(outdir, outname), "w") as file:
+    with open(os.path.join(outdir, outname), "w", encoding="utf-8") as file:
         for text, stars in tqdm(extracts, desc="Saving data", unit=" reviews", leave=False, disable=not show_progress_bar):
             label = stars_to_label(stars)
 

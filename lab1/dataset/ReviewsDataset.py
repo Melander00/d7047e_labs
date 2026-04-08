@@ -43,7 +43,8 @@ class ReviewDataset(Dataset):
         text = sample["text"]
         label = sample["label"]
 
-        text = self.text_preprocessing(text)
+        if self.text_preprocessing is not None:
+            text = self.text_preprocessing(text)
 
         if self.tokenizer:
             encoded = self.tokenizer(
