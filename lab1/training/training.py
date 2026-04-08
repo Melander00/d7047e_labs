@@ -73,12 +73,16 @@ def run_model(
     model_name,
     num_epochs,
 ):
+    device = next(model.parameters()).device
+
+
     best_model, losses, accs, last_model, best_val_loss, elapsed_time_seconds = run_training(
         model, loaders, criterion, optimizer, model_name, num_epochs
     )
 
+
     test_accuracy, test_loss, confusion_matrix = run_test(
-        best_model, loaders, criterion, model_name
+        best_model.to(device), loaders, criterion, model_name
     )
 
 
@@ -113,7 +117,7 @@ def save_model(
 ):
     os.makedirs(output_dir, exist_ok=True)
 
-    with open(os.path.join(output_dir, "metadata.json"), "w") as file:
+    with open(os.path.join(output_dir, "metadata.json"), "w", encoding="utf-8") as file:
         json.dump(metadata, file, indent=4)
 
     if best_model:
@@ -187,6 +191,8 @@ def continue_model_training(
     Returns the metadata. See GUIDELINES.md for schema.
     """
 
+    device = next(model.parameters()).device
+
     output_dir = f"./output/{model_name}/{iteration_number}"
 
     states = torch.load(
@@ -205,10 +211,10 @@ def continue_model_training(
     print("="*10, f"Continuing {model_name}", "="*10)
 
     best_model, losses, accs, last_model, best_val_loss, elapsed_time_seconds = run_training(
-        model, loaders, criterion, optimizer, model_name, num_epochs
+        model.to(device), loaders, criterion, optimizer, model_name, num_epochs
     )
 
-    with open(os.path.join(output_dir, "metadata.json"), "r") as f:
+    with open(os.path.join(output_dir, "metadata.json"), "r", encoding="utf-8") as f:
         metadata = json.load(f)
     
     test_accuracy = metadata['test_accuracy']
@@ -220,7 +226,7 @@ def continue_model_training(
         print("New best model!")
         # Run tests since we have a new best model.
         test_accuracy, test_loss, confusion_matrix = run_test(
-            best_model, loaders, criterion, model_name
+            best_model.to(device), loaders, criterion, model_name
         )
     else:
         # Don't overwrite the saved best model

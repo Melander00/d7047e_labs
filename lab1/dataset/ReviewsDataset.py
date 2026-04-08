@@ -15,7 +15,7 @@ class ReviewDataset(Dataset):
 
         # Store file offsets for lazy loading
         self.offsets = []
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             offset = 0
             for line in f:
                 if random.random() < sample_fraction:
@@ -35,7 +35,7 @@ class ReviewDataset(Dataset):
         return len(self.offsets)
 
     def __getitem__(self, idx):
-        with open(self.file_path, "r") as f:
+        with open(self.file_path, "r", encoding="utf-8") as f:
             f.seek(self.offsets[idx])
             line = f.readline()
             sample = json.loads(line)

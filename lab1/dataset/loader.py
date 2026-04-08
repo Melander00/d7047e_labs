@@ -1,9 +1,14 @@
 import torch
 from dataset.amazon_preprocessing import get_amazon_file_path
 from dataset.ReviewsDataset import ReviewDataset
+from dataset.SimpleReviewDataset import SimpleReviewDataset
 from dataset.yelp_preprocessing import get_yelp_file_path
 from torch.utils.data import DataLoader, Dataset, Subset
 
+
+def load_yelp_simple(entries = -1):
+    fpath = get_yelp_file_path(entries=entries)
+    return SimpleReviewDataset(fpath)
 
 def load_yelp_dataset(entries = -1, sample_fraction = 1.0):
     """
@@ -66,7 +71,9 @@ def prepare_yelp_loaders(
     return loaders, dataset
 
 
-
+def load_amazon_simple(use_25k_set):
+    fpath = get_amazon_file_path(use_25k_set=use_25k_set)
+    return SimpleReviewDataset(fpath)
 
 def load_amazon_dataset(
     use_25k_set,

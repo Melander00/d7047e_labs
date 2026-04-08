@@ -14,7 +14,7 @@ def train_epoch(model, criterion, optimizer, train_loader, epoch_number, grad_sc
     correct=0
     guesses=0
 
-    for batch_nr, (inputs, labels) in enumerate(tqdm(train_loader, leave=False)):
+    for batch_nr, (inputs, labels) in enumerate(tqdm(train_loader, leave=False, desc="Training")):
         optimizer.zero_grad()
         inputs = inputs.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
@@ -120,7 +120,7 @@ def test_model(model, criterion, test_loader):
     c_labels = []
 
     with torch.no_grad():
-        for batch_nr, (inputs, labels) in enumerate(tqdm(test_loader)):
+        for batch_nr, (inputs, labels) in enumerate(tqdm(test_loader, leave=False, desc="Testing")):
             inputs = inputs.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
 
@@ -157,4 +157,4 @@ def test_model(model, criterion, test_loader):
         accumulate=True
     )
 
-    return accuracy, avg_loss, confusion_matrix
+    return accuracy, avg_loss, confusion_matrix.tolist()
