@@ -39,13 +39,16 @@ def main_simple_ann(save_board=False):#normal data from the lab, needs rewrite f
     CACHE_PATH = "ANN_cached_data.pt"
     text_with_data="amazon_cells_labelled_LARGE_25K.txt"
     #text_with_data="amazon_cells_labelled.txt"
-    if text_with_data=="amazon_cells_labelled_LARGE_25K.txt":#creates a cache for the 25k dataset to sped up
+    if text_with_data=="amazon_cells_labelled_LARGE_25K.txt":
         if os.path.exists(CACHE_PATH):
             print("Loading cached dataset...")
             train_data, train_labels, val_data, val_labels, vocab = torch.load(CACHE_PATH,weights_only=False)
-        
-
-    else :
+        else:
+            print("Processing raw dataset and creating cache...")
+            train_data, train_labels, val_data, val_labels, vocab = loader.load_prep_data(text_with_data=text_with_data)
+            torch.save((train_data, train_labels, val_data, val_labels, vocab), CACHE_PATH)
+            print("Saved dataset to cache.")
+    else:
         train_data,train_labels,val_data,val_labels,vocab =loader.load_prep_data()
 
 
