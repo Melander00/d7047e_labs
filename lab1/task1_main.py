@@ -127,10 +127,13 @@ def main_LSTM(save_board=False):#normal data from the lab, needs rewrite for big
     if text_with_data=="amazon_cells_labelled_LARGE_25K.txt":
         if os.path.exists(CACHE_PATH):
             print("Loading cached dataset...")
-            train_data, train_labels, val_data, val_labels, vocab = torch.load(CACHE_PATH)
-        
-
-    else :
+            train_data, train_labels, val_data, val_labels, vocab = torch.load(CACHE_PATH, weights_only=False)
+        else:
+            print("Processing raw dataset and creating cache...")
+            train_data, train_labels, val_data, val_labels, vocab = loader.load_prep_data_lstm(text_with_data=text_with_data)
+            torch.save((train_data, train_labels, val_data, val_labels, vocab), CACHE_PATH)
+            print("Saved dataset to cache.")
+    else:
         train_data,train_labels,val_data,val_labels,vocab =loader.load_prep_data_lstm()
 
 
@@ -243,8 +246,8 @@ def main_bigdata(Model="LSTM"):
 
 
 
-#main_LSTM()
-main_simple_ann()
+main_LSTM()
+#main_simple_ann()
 #main_bigdata()
 #createcache()
 #tensorboard --logdir=runs_task1 (call this i the terminal to activate tensorboard)
