@@ -241,7 +241,7 @@ def main_bigdata(Model="LSTM"):
 
 
 #main_LSTM()
-#main_simple_ann()
+main_simple_ann()
 #main_bigdata()
 #createcache()
 #tensorboard --logdir=runs_task1 (call this i the terminal to activate tensorboard)
