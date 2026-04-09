@@ -13,6 +13,7 @@ class LSTM(nn.Module):
         # 2-layer LSTM: 64 input → 128 hidden (reduced from 5 layers which was excessive)
         self.lstm = nn.LSTM(64, 128, batch_first=True, num_layers=2, dropout=0.3)
 
+        self.layernorm = nn.LayerNorm(128)
         self.dropout = nn.Dropout(0.3)
         self.fc1 = nn.Linear(128, 2)
 
@@ -26,6 +27,7 @@ class LSTM(nn.Module):
         out = h_n[-1]
         # out: (batch_size, 128)
 
+        out = self.layernorm(out)
         out = self.dropout(out)
         out = self.fc1(out)
         # out: (batch_size, 2)

@@ -106,8 +106,14 @@ def main_LSTM(save_board=True):
     loaders = (dataloader_training, dataloader_validation, dataloader_testing)
 
     model     = LSTM(vocab_size).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    criterion = nn.CrossEntropyLoss()
+
+    # Calculate class weights to prevent majority-class bias
+    count_pos = (train_labels == 1).sum().item()
+    count_neg = (train_labels == 0).sum().item()
+    loss_weights = torch.tensor([1.0, count_neg / count_pos]).to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4) # Lowered LR
+    criterion = nn.CrossEntropyLoss(weight=loss_weights)
 
     metadata = develop_model(
         model=model,

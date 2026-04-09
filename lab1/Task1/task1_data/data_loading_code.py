@@ -13,16 +13,19 @@ from torch.utils.data import TensorDataset, DataLoader
 STOPWORDS = set(stopwords.words('english'))
 
 
-def preprocess_pandas(data, columns):
+def preprocess_pandas(data, columns, remove_stopwords=True):
     df_ = pd.DataFrame(columns=columns)
     data['Sentence'] = data['Sentence'].str.lower()
     data['Sentence'] = data['Sentence'].replace(r'[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)           # remove emails
     data['Sentence'] = data['Sentence'].replace(r'((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)  # remove IPs
     data['Sentence'] = data['Sentence'].str.replace(r'[^\w\s]', '', regex=True)                                # remove special chars
-    data['Sentence'] = data['Sentence'].replace(r'\d', '', regex=True)                                        # remove numbers
+    data['Sentence'] = data['Sentence'].replace(r'\d', '', regex=True)                                        # 2-layer LSTM: 64 input → 128 hidden (reduced from 5 layers which was excessive)
     for index, row in data.iterrows():
         word_tokens = word_tokenize(row['Sentence'])
-        filtered_sent = [w for w in word_tokens if w not in STOPWORDS]
+        if remove_stopwords:
+            filtered_sent = [w for w in word_tokens if w not in STOPWORDS]
+        else:
+            filtered_sent = word_tokens
         df_.loc[len(df_)] = {
             "index": row['index'],
             "Class": row['Class'],
@@ -97,7 +100,7 @@ def load_prep_data_lstm(text_with_data="amazon_cells_labelled.txt"):
     data.columns = ['Sentence', 'Class']
     data['index'] = data.index
     columns = ['index', 'Class', 'Sentence']
-    data = preprocess_pandas(data, columns)
+    data = preprocess_pandas(data, columns, remove_stopwords=False)
 
     sentences = data['Sentence'].values.astype('U')
     labels    = data['Class'].values.astype('int32')
