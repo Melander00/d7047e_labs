@@ -19,7 +19,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main_simple_ann(save_board=True):
     # Cache uses v2 naming — 7-value format including test split
-    CACHE_PATH    = "ANN_cached_data_v2.pt"
+    CACHE_PATH    = "ANN_cached_data_v3.pt"
     text_with_data = "amazon_cells_labelled_LARGE_25K.txt"
 
     if os.path.exists(CACHE_PATH):
@@ -77,7 +77,7 @@ def main_simple_ann(save_board=True):
 
 def main_LSTM(save_board=True):
     # Cache uses v2 naming — 7-value format including test split
-    CACHE_PATH    = "lstm_cached_data_v2.pt"
+    CACHE_PATH    = "lstm_cached_data_v3.pt"
     text_with_data = "amazon_cells_labelled_LARGE_25K.txt"
 
     if os.path.exists(CACHE_PATH):
