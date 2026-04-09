@@ -4,8 +4,8 @@ import subprocess
 
 from tqdm import tqdm
 
-FP_1K = "./data/amazon_raw/amazon_cells_labelled.txt"
-FP_25K = "./data/amazon_raw/amazon_cells_labelled_LARGE_25K.txt"
+FP_1K = "./lab1/Task1/task1_data/amazon_cells_labelled.txt"
+FP_25K = "./lab1/Task1/task1_data/amazon_cells_labelled_LARGE_25K.txt"
 
 def load_amazon_reviews(
     file_path = FP_1K,

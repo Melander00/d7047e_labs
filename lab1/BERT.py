@@ -154,37 +154,13 @@ def main():
     max_len = 128
     batch_size = 16
     learning_rate = 2e-5
-    num_epochs=10
-    feature_extraction=False
+    num_epochs = 3  # Start with 3 epochs for a quick comparable result
+    feature_extraction = False
 
-    exec_bert_amazon(
-        use_25k_set=False,
-        model_name="bert_amazon_1k",
-
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        max_len=max_len,
-        iteration_number=0,
-        num_epochs=num_epochs,
-        feature_extraction=feature_extraction,
-    )
-
+    # Run 25K Amazon first — same dataset as ANN and LSTM for fair comparison
     exec_bert_amazon(
         use_25k_set=True,
         model_name="bert_amazon_25k",
-        
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        max_len=max_len,
-        iteration_number=0,
-        num_epochs=num_epochs,
-        feature_extraction=feature_extraction,
-    )
-
-    exec_bert_yelp(
-        entries=int(0.1 * 1e6),
-        model_name="bert_yelp",
-        
         batch_size=batch_size,
         learning_rate=learning_rate,
         max_len=max_len,
