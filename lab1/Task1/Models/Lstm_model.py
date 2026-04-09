@@ -1,46 +1,33 @@
 import torch
 import torch.nn as nn
 
+
 class LSTM(nn.Module):
     def __init__(self, vocab_size):
-        
         super().__init__()
-        print("LSTM constucted")
-        # define layers here later
-        self.embedding = nn.Embedding(vocab_size, 30,padding_idx=0)
-        self.lstm=nn.LSTM(30,64,batch_first=True,num_layers=5,dropout=0.3)
-        
+        print("LSTM constructed")
+
+        # Embedding: maps each word ID to a 64-dim vector (up from 30)
+        self.embedding = nn.Embedding(vocab_size, 64, padding_idx=0)
+
+        # 2-layer LSTM: 64 input → 128 hidden (reduced from 5 layers which was excessive)
+        self.lstm = nn.LSTM(64, 128, batch_first=True, num_layers=2, dropout=0.3)
+
         self.dropout = nn.Dropout(0.3)
-        #self.relu1=nn.ReLU()
-        
-        self.fc1=nn.Linear(64,2)
+        self.fc1 = nn.Linear(128, 2)
 
     def forward(self, x):
-        
+        # x: (batch_size, seq_len)
         x = self.embedding(x)
-        # → (batch_size, seq_len, embedding_dim)
-
-        #out, _ = self.lstm(x)
-        # → (batch_size, seq_len, hidden_size)
-
-        #out = out[:, -1, :]
-
+        # x: (batch_size, seq_len, 64)
 
         _, (h_n, _) = self.lstm(x)
+        # h_n: (num_layers, batch_size, 128) — take the last layer's hidden state
         out = h_n[-1]
-        
-        # → (batch_size, hidden_size)
-        out=self.dropout(out)
-       # out = self.relu1(out)
+        # out: (batch_size, 128)
+
+        out = self.dropout(out)
         out = self.fc1(out)
-        # → (batch_size, 2)
+        # out: (batch_size, 2)
 
         return out
-        
-        
-        
-        
-        
-        
-        
-      

@@ -52,9 +52,9 @@ def exec_model(
     iteration_number=0,
     num_epochs = 10
 ):
-    labels = {"0": 0, "1": 0}
+    labels = {0: 0, 1: 0}
     for t, l in simple_dataset:
-        labels[str(l.item())] += 1
+        labels[l.item()] += 1
     print(labels)
     
     loaders, dataset = loaders_fn()
@@ -63,7 +63,7 @@ def exec_model(
 
     model = BERTClassifier(feature_extraction=feature_extraction).to(device)
 
-    loss_weights = torch.tensor([1.0, labels.get("0", 0) / labels.get("1", 1e-6)]).to(device)
+    loss_weights = torch.tensor([1.0, labels.get(0, 0) / labels.get(1, 1e-6)]).to(device)
 
     criterion=nn.CrossEntropyLoss(weight=loss_weights)
     optim=torch.optim.Adam(model.parameters(),lr=learning_rate)
@@ -154,7 +154,7 @@ def main():
     max_len = 128
     batch_size = 16
     learning_rate = 2e-5
-    num_epochs = 3  # Start with 3 epochs for a quick comparable result
+    num_epochs = 5   # 5 epochs for solid fine-tuning; use continue_model_training() to extend
     feature_extraction = False
 
     # Run 25K Amazon first — same dataset as ANN and LSTM for fair comparison
