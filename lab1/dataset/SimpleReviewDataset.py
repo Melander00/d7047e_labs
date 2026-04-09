@@ -10,9 +10,13 @@ class SimpleReviewDataset(Dataset):
 
         # Store file offsets for lazy loading
         self.offsets = []
-        with open(file_path, "r", encoding="utf-8") as f:
+        
+        with open(file_path, "rb") as f:
             offset = 0
             for line in f:
+                if not line.strip():
+                    offset += len(line)
+                    continue
                 self.offsets.append(offset)
                 offset += len(line)
 
@@ -22,7 +26,7 @@ class SimpleReviewDataset(Dataset):
     def __getitem__(self, idx):
         with open(self.file_path, "r", encoding="utf-8") as f:
             f.seek(self.offsets[idx])
-            line = f.readline()
+            line = f.readline().strip()
             sample = json.loads(line)
 
         text = sample["text"]

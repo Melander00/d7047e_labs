@@ -29,7 +29,7 @@ def save_extracts_to_disk(
     show_progress_bar = True,
 ):
     os.makedirs(outdir, exist_ok=True)
-    with open(os.path.join(outdir, outname), "w", encoding="utf-8") as file:
+    with open(os.path.join(outdir, outname), "w", encoding="utf-8", newline="\n") as file:
         for text, label in tqdm(extracts, desc="Saving data", unit=" reviews", leave=False, disable=not show_progress_bar):
             entry = {
                 "text": text, 
