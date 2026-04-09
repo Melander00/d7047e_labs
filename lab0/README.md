@@ -19,11 +19,11 @@ lab0/
 
 | Parameter | Value |
 |---|---|
-| Learning Rate (CIFAR-10 / AlexNet) | 0.0001 |
+| Learning Rate (CIFAR-10 / AlexNet) | 0.0001 (Adam), 0.01 (SGD) |
 | Learning Rate (MNIST / SVHN) | 0.001 |
 | Batch Size | 128 |
 | Epochs | 30 (CIFAR-10 / AlexNet), 20 (MNIST / SVHN) |
-| Optimizer | Adam (main runs), SGD (comparison run) |
+| Optimizer | Adam (main runs), SGD with 0.9 Momentum (comparison) |
 | Train/Val Split | 80/20 (CIFAR-10), 85/15 (MNIST / SVHN) |
 | Loss Function | CrossEntropyLoss |
 
@@ -31,18 +31,19 @@ lab0/
 
 ## Task 0.1 — CNN on CIFAR-10
 
-We built a simple CNN with 3 convolutional layers and trained it on CIFAR-10 using three different configurations (SGD, Adam, and Tanh) to observe the effects of optimizer and activation choices.
+We built a simple CNN with 3 convolutional layers and trained it on CIFAR-10 using different optimizer and activation combinations.
 
-![](./img/cifar10.png)
+![](./img/cifar10_improved.png)
 
 | Config | Test Acc | Train Loss | Val Loss |
 |---|---|---|---|
-| Adam + LeakyReLU | 72.67% | 0.83 | 0.80 |
-| Adam + Tanh | 73.40% | 0.79 | 0.78 |
-| SGD + LeakyReLU | 14.92% | 2.28 | 2.28 |
+| Adam + LeakyReLU | 83.51% | 0.17 | 0.73 |
+| Adam + Tanh | 80.19% | 0.47 | 0.59 |
+| SGD + Momentum | 79.33% | 0.50 | 0.62 |
 
-- Adam converges much faster and effectively on CIFAR-10 than SGD with a small learning rate.
-- Tanh and LeakyReLU perform similarly, with Tanh having a slight edge in this experiment.
+- **SGD Fix:** By increasing the learning rate to 0.01 and adding 0.9 momentum, the SGD run now trains successfully, reaching over 79% accuracy (a huge jump from the initial failed run).
+- Adam remains the strongest overall, but the final gap between Adam, Tanh, and SGD is significantly reduced through proper tuning.
+- All three combinations show healthy convergence curves in the final logs.
 
 
 ## Task 0.2.1 — AlexNet Transfer Learning (ImageNet → CIFAR-10)
@@ -84,4 +85,4 @@ We trained a model for handwriting digit recognition (MNIST) and then transferre
 ### Analysis of the Transfer
 For this task we first trained a CNN from scratch on MNIST, which got to around 99.5% test accuracy — not surprising since MNIST is a relatively simple dataset. The interesting part is what happens when you take those learned weights and apply them to SVHN.
 
-SVHN (Street View House Numbers) is a much harder dataset. The images are real-world photos of house numbers, so there's a lot more noise, variation in lighting, and background clutter compared to MNIST's clean handwritten digits. Despite that, the transferred model still managed to reach around 83.7% on SVHN, which is a decent result considering the backbone was never trained on any real-world images. The fact that it works at all shows that some of the low-level features learned on MNIST (edges, curves, basic digit shapes) do transfer over, even across very different domains. The accuracy is lower than you'd get training directly on SVHN, which makes sense — there's still a meaningful domain gap between clean handwritten digits and noisy street-level photos.
+SVHN (Street View House Numbers) is a much harder dataset. The images are real-world photos of house numbers, so there's a lot more noise, variation in lighting, and background clutter compared to MNIST's clean handwritten digits. Despite that, the transferred model still managed to reach around 83.7% on SVHN, which is a decent result considering the backbone was never trained on any real-world images during training. The fact that it works at all shows that some of the low-level features learned on MNIST (edges, curves, basic digit shapes) do transfer over, even across very different domains. The accuracy is lower than you'd get training directly on SVHN, which makes sense — there's still a meaningful domain gap between clean handwritten digits and noisy street-level photos.

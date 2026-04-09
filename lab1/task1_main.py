@@ -33,8 +33,8 @@ def createcache(CACHE_PATH = "ANN_cached_data.pt",text_with_data="amazon_cells_l
 
 def main_simple_ann(save_board=False):#normal data from the lab, needs rewrite for bigger
     #add data
-    #train_data,train_labels,val_data,val_labels,vocab =loader.load_prep_data(text_with_data="amazon_cells_labelled_LARGE_25K.txy")#used for the smaller dataset
-   # Larger data: amazon_cells_labelled_LARGE_25K.txy
+    #train_data,train_labels,val_data,val_labels,vocab =loader.load_prep_data(text_with_data="amazon_cells_labelled_LARGE_25K.txt")#used for the smaller dataset
+   # Larger data: amazon_cells_labelled_LARGE_25K.txt
 
     CACHE_PATH = "ANN_cached_data.pt"
     text_with_data="amazon_cells_labelled_LARGE_25K.txt"
@@ -199,9 +199,10 @@ def main_bigdata(Model="LSTM"):
     
 
 
-    traindata,valdata,testdata=prepare_yelp_loaders(batch_size=64)
+    (traindata,valdata,testdata), dataset = prepare_yelp_loaders(batch_size=64)
 
     #makes a vocab based on trainingdata:
+    max_id = 0
     for data, _ in traindata:
         max_id = max(max_id, data.max().item())
 
