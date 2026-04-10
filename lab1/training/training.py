@@ -81,11 +81,13 @@ def run_model(
     )
 
 
-    test_accuracy, test_loss, confusion_matrix = run_test(
+    '''test_accuracy, test_loss, confusion_matrix = run_test(
         best_model.to(device), loaders, criterion, model_name
-    )
+    )'''
 
-
+    test_loss=None
+    test_accuracy=None
+    confusion_matrix=None
     metadata = {
         "model_name": model_name,
         "num_epochs": num_epochs,
