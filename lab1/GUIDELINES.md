@@ -123,7 +123,7 @@ This is the dataset `__getitem__` function
 def __getitem__(self, idx):
     with open(self.file_path, "r", encoding="utf-8") as f:
         f.seek(self.offsets[idx])
-        line = f.readline()
+        line = f.readline().strip()
         sample = json.loads(line)
 
     text = sample["text"]
@@ -140,7 +140,11 @@ def __getitem__(self, idx):
             max_length=self.max_len,
             return_tensors="pt"
         )
-        return {k: v.squeeze(0) for k, v in encoded.items()}, torch.tensor(label)
+
+        input_ids = encoded["input_ids"].squeeze(0)
+        attention_mask = encoded["attention_mask"].squeeze(0)
+
+        return torch.stack([input_ids, attention_mask], dim=0), torch.tensor(label)
 
     return text, torch.tensor(label)
 ```

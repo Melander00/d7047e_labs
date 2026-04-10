@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from dataset.loader import (load_amazon_simple, load_yelp_simple,
                             prepare_amazon_loaders, prepare_yelp_loaders)
+from tqdm import tqdm
 from training.training import develop_model
 from transformers import AutoModel, AutoTokenizer
 
@@ -52,10 +53,12 @@ def exec_model(
     iteration_number=0,
     num_epochs = 10
 ):
-    labels = {0: 0, 1: 0}
-    for t, l in simple_dataset:
-        labels[l.item()] += 1
-    print(labels)
+    labels = {'0': 1613801, '1': 4684545} # FULL YELP DATASET
+    # for t, l in tqdm(simple_dataset):
+    #     labels[str(l.item())] += 1
+    # print(labels)
+
+    total = labels["0"] + labels["1"]
     
     loaders, dataset = loaders_fn()
     
@@ -63,7 +66,7 @@ def exec_model(
 
     model = BERTClassifier(feature_extraction=feature_extraction).to(device)
 
-    loss_weights = torch.tensor([1.0, labels.get(0, 0) / labels.get(1, 1e-6)]).to(device)
+    loss_weights = torch.tensor([labels["0"] / total, labels["1"] / total]).to(device)
 
     criterion=nn.CrossEntropyLoss(weight=loss_weights)
     optim=torch.optim.Adam(model.parameters(),lr=learning_rate)
@@ -154,17 +157,42 @@ def main():
     max_len = 128
     batch_size = 16
     learning_rate = 2e-5
-    num_epochs = 5   # 5 epochs for solid fine-tuning; use continue_model_training() to extend
-    feature_extraction = False
+    num_epochs = 5
+    feature_extraction=False
 
-    # Run 25K Amazon first — same dataset as ANN and LSTM for fair comparison
-    exec_bert_amazon(
-        use_25k_set=True,
-        model_name="bert_amazon_25k",
+    # exec_bert_amazon(
+    #     use_25k_set=False,
+    #     model_name="bert_amazon_1k_fe",
+
+    #     batch_size=batch_size,
+    #     learning_rate=learning_rate,
+    #     max_len=max_len,
+    #     iteration_number=1,
+    #     num_epochs=num_epochs,
+    #     feature_extraction=feature_extraction,
+    # )
+
+    # exec_bert_amazon(
+    #     use_25k_set=True,
+    #     model_name="bert_amazon_25k_fe",
+        
+    #     batch_size=batch_size,
+    #     learning_rate=learning_rate,
+    #     max_len=max_len,
+    #     iteration_number=1,
+    #     num_epochs=num_epochs,
+    #     feature_extraction=feature_extraction,
+    # )
+
+    exec_bert_yelp(
+        # entries=-1,
+        entries=int(0.1 * 1e6),
+        model_name="bert_yelp",
+        iteration_number=3,
+        
         batch_size=batch_size,
         learning_rate=learning_rate,
         max_len=max_len,
-        iteration_number=0,
         num_epochs=num_epochs,
         feature_extraction=feature_extraction,
     )
