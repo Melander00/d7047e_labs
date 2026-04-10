@@ -1,98 +1,347 @@
-import os
-
-import numpy as np
-import pandas as pd
 import torch
-from nltk import word_tokenize
-from nltk.corpus import stopwords
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
+import numpy as np
+from matplotlib import pyplot
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from nltk.corpus import stopwords
+from nltk import word_tokenize
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, classification_report
+import os
+import json
+print(os.getcwd())
 
 def preprocess_pandas(data, columns):
     df_ = pd.DataFrame(columns=columns)
     data['Sentence'] = data['Sentence'].str.lower()
-    data['Sentence'] = data['Sentence'].replace('((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)
-    data['Sentence'] = data['Sentence'].replace(r'[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)
-    data['Sentence'] = data['Sentence'].str.replace(r'[^\w\s]', '', regex=True)
-    data['Sentence'] = data['Sentence'].replace(r'\d', '', regex=True)
+    data['Sentence'] = data['Sentence'].replace('[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)                      # remove emails
+    data['Sentence'] = data['Sentence'].replace('((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)    # remove IP address
+    data['Sentence'] = data['Sentence'].str.replace('[^\w\s]','')                                                       # remove special characters
+    data['Sentence'] = data['Sentence'].replace('\d', '', regex=True)                                                   # remove numbers
     for index, row in data.iterrows():
         word_tokens = word_tokenize(row['Sentence'])
-        filtered_sent = [w for w in word_tokens] # No stopword removal, matches original 82% run
+        filtered_sent = [w for w in word_tokens if not w in stopwords.words('english')]
         df_.loc[len(df_)] = {
             "index": row['index'],
             "Class": row['Class'],
             "Sentence": " ".join(filtered_sent)
         }
-    return df_
+    return data
 
+# If this is the primary file that is executed (ie not an import of another file)
+#if __name__ == "__main__":
 def load_prep_data(text_with_data="amazon_cells_labelled.txt"):
+    
+    if text_with_data=="amazon_cells_labelled.txt":
+        print("small data generated")
+    else:
+        print("larger data simpleANN")
+
+
+
+    # get data, pre-process and split
     base_dir = os.path.dirname(__file__)
     file_path = os.path.join(base_dir, text_with_data)
+
+
     data = pd.read_csv(file_path, delimiter='\t', header=None)
     data.columns = ['Sentence', 'Class']
-    data['index'] = data.index
+    data['index'] = data.index                                          # add new column index
     columns = ['index', 'Class', 'Sentence']
-    data = preprocess_pandas(data, columns)
+    data = preprocess_pandas(data, columns)                             # pre-process
+    training_data, validation_data, training_labels, validation_labels = train_test_split( # split the data into training, validation, and test splits
+        data['Sentence'].values.astype('U'),
+        data['Class'].values.astype('int32'),
+        test_size=0.15,
+        random_state=0,
+        train_size=0.75,
+        shuffle=False
+    )
 
-    sentences = data['Sentence'].values.astype('U')
-    labels = data['Class'].values.astype('int32')
+    # vectorize data using TFIDF and transform for PyTorch for scalability
+    word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1,2), max_features=2000, max_df=0.5, use_idf=True, norm='l2')
+    training_data = word_vectorizer.fit_transform(training_data)        # transform texts to sparse matrix
+    training_data = training_data.todense()                             # convert to dense matrix for Pytorch
+    vocab_size = len(word_vectorizer.vocabulary_)
+    validation_data = word_vectorizer.transform(validation_data)
+    validation_data = validation_data.todense()
+    
+    
+    
+    
+    
+    
+    '''train_x_tensor = torch.from_numpy(np.array(training_data)).type(torch.FloatTensor)
+    train_y_tensor = torch.from_numpy(np.array(training_labels)).long()
+    validation_x_tensor = torch.from_numpy(np.array(validation_data)).type(torch.FloatTensor)
+    validation_y_tensor = torch.from_numpy(np.array(validation_labels)).long()'''
 
-    # Reverting to the simpler split used in the 82% run
-    train_s, val_s, train_l, val_l = train_test_split(sentences, labels, test_size=0.10, random_state=0)
-    test_s, test_l = val_s, val_l # Use val as test just to keep it running for now
+    train_x_tensor = torch.from_numpy(np.array(training_data, dtype=np.float32))
+    train_y_tensor = torch.from_numpy(np.array(training_labels, dtype=np.int64))
 
-    word_vectorizer = TfidfVectorizer(analyzer='word', ngram_range=(1, 2), max_features=20000, max_df=0.5, use_idf=True, norm='l2')
-    train_x = torch.from_numpy(np.array(word_vectorizer.fit_transform(train_s).todense())).float()
-    val_x = torch.from_numpy(np.array(word_vectorizer.transform(val_s).todense())).float()
-    test_x = val_x
+    validation_x_tensor = torch.from_numpy(np.array(validation_data, dtype=np.float32))
+    validation_y_tensor = torch.from_numpy(np.array(validation_labels, dtype=np.int64))
 
-    train_y = torch.from_numpy(np.array(train_l)).long()
-    val_y = torch.from_numpy(np.array(val_l)).long()
-    test_y = val_y
 
-    return train_x, train_y, val_x, val_y, test_x, test_y, word_vectorizer.vocabulary_
+
+
+
+
+    return train_x_tensor, train_y_tensor, validation_x_tensor, validation_y_tensor,word_vectorizer.vocabulary_
+
 
 def load_prep_data_lstm(text_with_data="amazon_cells_labelled.txt"):
+    if text_with_data=="amazon_cells_labelled.txt":
+        print("small data generated (LSTM)")
+    else:
+        print("larger data LSTM")
     base_dir = os.path.dirname(__file__)
     file_path = os.path.join(base_dir, text_with_data)
+
     data = pd.read_csv(file_path, delimiter='\t', header=None)
     data.columns = ['Sentence', 'Class']
     data['index'] = data.index
     columns = ['index', 'Class', 'Sentence']
     data = preprocess_pandas(data, columns)
+    
+    '''sentences = []
+    labels = []
 
-    sentences = data['Sentence'].values.astype('U')
-    labels = data['Class'].values.astype('int32')
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            text, label = line.strip().split('\t')
+            sentences.append(text)
+            labels.append(int(label))'''
 
-    train_s, val_s, train_l, val_l = train_test_split(sentences, labels, test_size=0.10, random_state=0)
-    test_s, test_l = val_s, val_l
+
+
+
+
+
+
+
+    training_data, validation_data, training_labels, validation_labels = train_test_split(
+        data['Sentence'].values.astype('U'),
+        data['Class'].values.astype('int32'),
+       
+        
+        
+        test_size=0.15,
+        train_size=0.75,
+        random_state=0,
+        shuffle=False,
+        )
+
+    # ---------- NEW PART (replaces TF-IDF) ----------
 
     def tokenize(text):
         return text.lower().split()
 
-    # Reverting to building vocab on the whole dataset to match the 82% performance
+    # build vocab
     vocab = {"<PAD>": 0, "<UNK>": 1}
     idx = 2
-    for text in sentences:
+    for text in training_data:
         for word in tokenize(text):
             if word not in vocab:
                 vocab[word] = idx
                 idx += 1
 
     vocab_size = len(vocab)
-    max_len = 20 # Reverting to original length 20
 
-    def encode_and_pad(text):
-        ids = [vocab.get(w, vocab["<UNK>"]) for w in tokenize(text)]
-        return ids[:max_len] + [0] * max(0, max_len - len(ids))
+    # encode + pad
+    max_len = 20
 
-    train_x = torch.tensor([encode_and_pad(t) for t in train_s]).long()
-    val_x = torch.tensor([encode_and_pad(t) for t in val_s]).long()
-    test_x = val_x
+    def encode(text):
+        return [vocab.get(w, vocab["<UNK>"]) for w in tokenize(text)]
 
-    train_y = torch.tensor(train_l).long()
-    val_y = torch.tensor(val_l).long()
-    test_y = val_y
+    def pad(seq):
+        return seq[:max_len] + [0] * (max_len - len(seq))
 
-    return train_x, train_y, val_x, val_y, test_x, test_y, vocab_size
+    training_data = [pad(encode(t)) for t in training_data]
+    validation_data = [pad(encode(t)) for t in validation_data]
+
+    # ---------- SAME AS BEFORE ----------
+    train_x_tensor = torch.tensor(training_data).long()
+    train_y_tensor = torch.tensor(training_labels).long()
+
+    validation_x_tensor = torch.tensor(validation_data).long()
+    validation_y_tensor = torch.tensor(validation_labels).long()
+
+    return train_x_tensor, train_y_tensor, validation_x_tensor, validation_y_tensor, vocab_size
+
+
+
+
+def load_prep_bigdata_lstm(jsonL="reviews_all.jsonl"):
+    #load the json and format it into tensors like previous. Then, if needed, cache them with the same method as before
+    
+    
+    print("largest dataset ",jsonL)
+    base_dir = os.path.dirname(__file__)
+    file_path = os.path.join(base_dir, jsonL)
+
+   
+#----------------------------------------------------------------------
+    
+    
+
+    sentences = []
+    labels = []
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            for i,line in enumerate(f):
+                item = json.loads(line)
+                sentences.append(item["text"])   # or "Sentence"
+                labels.append(item["label"])     # or "Class"
+                if i % 100000 == 0:
+                    print(f"Processed {i} samples")
+    
+    
+    
+    
+   
+
+
+    training_data, validation_data, training_labels, validation_labels = train_test_split(
+    sentences,
+    labels,
+    test_size=0.15,
+    train_size=0.75,
+    )
+
+
+
+
+
+
+    # ---------- NEW PART (replaces TF-IDF) ----------
+
+    def tokenize(text):
+        return text.lower().split()
+
+    # build vocab
+    vocab = {"<PAD>": 0, "<UNK>": 1}
+    idx = 2
+    for text in training_data:
+        for word in tokenize(text):
+            if word not in vocab:
+                vocab[word] = idx
+                idx += 1
+
+    vocab_size = len(vocab)
+
+    # encode + pad
+    max_len = 20
+
+    def encode(text):
+        return [vocab.get(w, vocab["<UNK>"]) for w in tokenize(text)]
+
+    def pad(seq):
+        return seq[:max_len] + [0] * (max_len - len(seq))
+
+    training_data = [pad(encode(t)) for t in training_data]
+    validation_data = [pad(encode(t)) for t in validation_data]
+
+    # ---------- SAME AS BEFORE ----------
+    train_x_tensor = torch.tensor(training_data).long()
+    train_y_tensor = torch.tensor(training_labels).long()
+
+    validation_x_tensor = torch.tensor(validation_data).long()
+    validation_y_tensor = torch.tensor(validation_labels).long()
+
+    return train_x_tensor, train_y_tensor, validation_x_tensor, validation_y_tensor, vocab_size
+    
+    
+    
+    
+    
+    
+    
+
+
+def load_prep_bigdata_ANN(jsonL="reviews_all.jsonl"):
+    #load the json and format it into tensors like previous. Then, if needed, cache them with the same method as before
+    
+    
+    print("largest dataset ",jsonL)
+    base_dir = os.path.dirname(__file__)
+    file_path = os.path.join(base_dir, jsonL)
+
+   
+#----------------------------------------------------------------------
+    
+    
+
+    sentences = []
+    labels = []
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            for i,line in enumerate(f):
+                item = json.loads(line)
+                sentences.append(item["text"])   # or "Sentence"
+                labels.append(item["label"])     # or "Class"
+                if i % 100000 == 0:
+                    print(f"Processed {i} samples")
+    
+    
+    
+    
+
+
+    training_data, validation_data, training_labels, validation_labels = train_test_split(
+    sentences,
+    labels,
+    test_size=0.15,
+    train_size=0.75,
+    )
+
+
+
+
+
+    # ----------  TF-IDF) ----------
+    vocab = {"<PAD>": 0, "<UNK>": 1}
+    idx=2
+    max_vocab = 1000
+    def tokenize(text):
+        return text.lower().split()
+
+    # build vocab
+    
+
+    for text in training_data:
+        for word in tokenize(text):
+            if word not in vocab:
+                if len(vocab) < max_vocab:
+                    vocab[word] = idx
+                    idx += 1
+
+    vocab_size = len(vocab)
+
+    # encode + pad
+    max_len = 20
+    def vectorize(text):
+        vec = [0] * vocab_size
+        for w in tokenize(text):
+            if w in vocab:
+                vec[vocab[w]] += 1
+        return vec
+
+    training_data = [vectorize(t) for t in training_data]
+    validation_data = [vectorize(t) for t in validation_data]
+    
+
+    # ---------- SAME AS BEFORE ----------
+    train_x_tensor = torch.tensor(training_data, dtype=torch.float16)
+    train_y_tensor = torch.tensor(training_labels).long()
+
+    validation_x_tensor = torch.tensor(validation_data, dtype=torch.float16)
+    validation_y_tensor = torch.tensor(validation_labels).long()
+
+    return train_x_tensor, train_y_tensor, validation_x_tensor, validation_y_tensor, vocab_size
