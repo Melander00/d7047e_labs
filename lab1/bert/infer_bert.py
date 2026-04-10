@@ -2,7 +2,7 @@ import os
 import sys
 
 import torch
-from BERT import BERTClassifier
+from bert.BERT import BERTClassifier
 from transformers import AutoTokenizer, logging
 
 logging.set_verbosity_error()
