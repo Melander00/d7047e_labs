@@ -28,6 +28,7 @@ def start_inference(model_name, iteration_number="0"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
+    print("")
     print("="*6,"BERT loaded. Start writing messages!", "="*6)
 
     while True:
@@ -59,12 +60,15 @@ def start_inference(model_name, iteration_number="0"):
 
         confidence = torch.softmax(prediction, dim=1).squeeze(0)[prob]
 
-        sentiment = "Negative >:(" if pred_class == 0 else "Positive!" 
-        print(f"Predicted: {sentiment} with {confidence:.2%} confidence")
+        sentiment = "Negative >:(" if pred_class == 0 else "Positive!"
+        color = "\033[91m" if pred_class == 0 else "\033[92m"
+        reset = "\033[00m" 
+        print(f"Predicted: {color}{sentiment}{reset} with {confidence:.2%} confidence")
+        print("")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 3:
         raise RuntimeError("Not enough arguments. Usage: python infer_bert.py MODEL_NAME ITERATION_NUMBER")
     try:
         start_inference(sys.argv[1], sys.argv[2])
