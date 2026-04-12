@@ -53,9 +53,9 @@ def exec_model(
     iteration_number=0,
     num_epochs = 10
 ):
-    labels = {'0': 1613801, '1': 4684545} # FULL YELP DATASET
-    # for t, l in tqdm(simple_dataset):
-    #     labels[str(l.item())] += 1
+    labels = {'0': 0, '1': 0} # FULL YELP DATASET
+    for t, l in tqdm(simple_dataset, desc="Calculating label imbalance", leave=False):
+        labels[str(l.item())] += 1
     # print(labels)
 
     total = labels["0"] + labels["1"]
@@ -66,7 +66,8 @@ def exec_model(
 
     model = BERTClassifier(feature_extraction=feature_extraction).to(device)
 
-    loss_weights = torch.tensor([labels["0"] / total, labels["1"] / total]).to(device)
+    # loss_weights = torch.tensor([labels["0"] / total, labels["1"] / total]).to(device)
+    loss_weights = torch.tensor([total / labels["0"], total / labels["1"]]).to(device)
 
     criterion=nn.CrossEntropyLoss(weight=loss_weights)
     optim=torch.optim.Adam(model.parameters(),lr=learning_rate)

@@ -167,7 +167,7 @@ def develop_model(
         optimizer=optimizer,
         best_model=best_model
     )
-    print("Development complete")
+    print("Development complete\n")
     return metadata
 
 
