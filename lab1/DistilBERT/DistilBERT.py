@@ -1,15 +1,11 @@
 import torch
 import torch.nn as nn
+from dataset.loader import (load_amazon_simple, load_yelp_simple,
+                            prepare_amazon_loaders, prepare_yelp_loaders)
+from tqdm import tqdm
+from training.training import develop_model
 from transformers import AutoModel, AutoTokenizer
 
-from dataset.loader import (
-    load_amazon_simple,
-    load_yelp_simple,
-    prepare_amazon_loaders,
-    prepare_yelp_loaders
-)
-
-from training.training import develop_model
 
 # Model Definition
 class DistilBERTClassifier(nn.Module):
@@ -53,18 +49,21 @@ def exec_model(
 ):
     # Compute class weights
     labels = {0: 0, 1: 0}
-    for _, l in simple_dataset:
+    for t, l in tqdm(simple_dataset, desc="Calculating label imbalance", leave=False):
         labels[l.item()] += 1
-    print("Label distribution:", labels)
+    # print("Label distribution:", labels)
+
+    total = labels[0] + labels[1]
 
     loaders, dataset = loaders_fn()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DistilBERTClassifier(feature_extraction=feature_extraction).to(device)
 
-    loss_weights = torch.tensor(
-        [1.0, labels.get(0, 0) / labels.get(1, 1e-6)]
-    ).to(device)
+    # loss_weights = torch.tensor(
+    #     [1.0, labels.get(0, 0) / labels.get(1, 1e-6)]
+    # ).to(device)
+    loss_weights = torch.tensor([total / labels[0], total / labels[1]]).to(device)
 
     criterion = nn.CrossEntropyLoss(weight=loss_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
