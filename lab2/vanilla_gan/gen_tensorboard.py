@@ -4,6 +4,7 @@ import sys
 
 import numpy as np
 import torch
+from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -42,10 +43,37 @@ def write_hparams(writer: SummaryWriter, metadata):
 
     writer.add_hparams(hparams, metrics)
 
+def write_images(writer, model_name, version, step_every=10):
+    img_dir = f"./output/{model_name}/{version}/img"
+
+    if not os.path.isdir(img_dir):
+        raise RuntimeError(f"Image directory does not exist: {img_dir}")
+
+    files = sorted([
+        f for f in os.listdir(img_dir)
+        if f.endswith(".png")
+    ], key=lambda x: int(os.path.splitext(x)[0]))
+
+    for file in files:
+        epoch = int(os.path.splitext(file)[0])
+
+        if epoch % step_every != 0:
+            continue
+
+        img_path = os.path.join(img_dir, file)
+
+        # load image
+        img = Image.open(img_path).convert("RGB")
+
+        # convert to tensor (C, H, W)
+        img_tensor = torch.from_numpy(np.array(img)).permute(2, 0, 1)
+
+        # log to tensorboard
+        writer.add_image("Generated Samples", img_tensor, global_step=epoch)
 
 def main():
     model_name = "vanilla_gan"
-    version = "2"
+    version = "1"
 
     metadata = load_metadata_file(model_name, version)
 
@@ -55,6 +83,8 @@ def main():
 
     write_losses(writer, metadata)
     write_hparams(writer, metadata)
+
+    write_images(writer, model_name, version, step_every=10)
 
     writer.close()
 

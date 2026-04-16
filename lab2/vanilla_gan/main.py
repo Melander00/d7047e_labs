@@ -12,7 +12,7 @@ from training import train_gan
 
 def main():
     model_name = "vanilla_gan"
-    version = "2"
+    version = "1"
 
     batch_size = 64
     learning_rate = 1e-3
