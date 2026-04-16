@@ -164,11 +164,20 @@ def exec_ann_yelp(
     )
 
 if __name__ == "__main__":
-    exec_ann_yelp(
-        entries=int(1e5),
-        model_name="ann_yelp",
-        iteration_number=0,
+    exec_ann_amazon(
+        use_25k_set=False,
+        model_name="ann_amazon_1k",
+        iteration_number=1,
         batch_size=128,
-        learning_rate=5e-5,
-        num_epochs=10,
+        learning_rate=5e-4,
+        num_epochs=50
     )
+
+    # exec_ann_yelp(
+    #     entries=int(1e5),
+    #     model_name="ann_yelp",
+    #     iteration_number=0,
+    #     batch_size=128,
+    #     learning_rate=5e-5,
+    #     num_epochs=10,
+    # )

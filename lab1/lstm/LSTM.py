@@ -24,8 +24,8 @@ class LSTM(nn.Module):
 
     def forward(self, x):
         x = self.embedding(x)
-        out, _ = self.lstm(x)
-        out = out[:, -1, :]
+        _, (h_n, _) = self.lstm(x)
+        out = h_n[-1]
         out = self.dropout(out)
         out = self.fc1(out)
 
@@ -133,6 +133,7 @@ def exec_lstm_amazon(
     num_epochs = 10,
     batch_size = 16,
     learning_rate = 1e-3,
+    max_len=64,
 ):
     simple_dataset = load_amazon_simple(use_25k_set=use_25k_set)
 
@@ -149,7 +150,8 @@ def exec_lstm_amazon(
         model_name=model_name,
         iteration_number=iteration_number,
         num_epochs=num_epochs,
-        learning_rate=learning_rate
+        learning_rate=learning_rate,
+        max_len=max_len,
     )
     
 
@@ -161,6 +163,7 @@ def exec_lstm_yelp(
     num_epochs = 10,
     batch_size = 16,
     learning_rate = 1e-3,
+    max_len=64,
 ):
     simple_dataset = load_yelp_simple(entries=entries)
 
@@ -177,17 +180,19 @@ def exec_lstm_yelp(
         model_name=model_name,
         iteration_number=iteration_number,
         num_epochs=num_epochs,
-        learning_rate=learning_rate
+        learning_rate=learning_rate,
+        max_len=max_len,
     )
 
 
 
 if __name__ == "__main__":
-    exec_lstm_yelp(
-        entries=int(1e5),
-        model_name="lstm_yelp",
-        iteration_number=0,
+    exec_lstm_amazon(
+        use_25k_set=False,
+        model_name="lstm_amazon_1k",
+        iteration_number=1,
         batch_size=128,
-        learning_rate=1e-3,
-        num_epochs=20,
+        learning_rate=2e-4,
+        num_epochs=50,
+        max_len=30,
     )
