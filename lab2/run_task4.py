@@ -9,15 +9,18 @@ import torch.nn as nn
 import torch.optim as optim
 from torch import Tensor
 import json
+import matplotlib.pyplot as plt
+import copy
+import random
 #.\.venv\Scripts\activate
-modelname="steve"
+modelname="steve2"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if not os.path.exists("Task4/Model/"+modelname+"/"+modelname+".pth"):
     print("model not found...")
     answer = input("do you wish to train a new one? (y/n)")
     if answer.lower()=="y":
-        Trainmodel(epochs=5,save_best=True,model_name=modelname,save_metadata=False)
+        Trainmodel(epochs=10,save_best=True,model_name=modelname,save_metadata=False)
     else:
         print("No model trained")
         print("A model has to be defined and trained in order to proceed...")
@@ -54,10 +57,10 @@ def Step1(model_name=modelname,model:nn.Module=CNN()):
 
     #print("With " + modelname+": " + " predicted 4 correctly ", len(indices_list), " times")
 #--------------chooses a index to load our picture, this is the one we assault
-    index_used=indices_list[0]
+    #index_used=indices_list[0]
     #print(index_used)
-    img,_=testdata.dataset[index_used]
-    img:Tensor
+    #img,_=testdata.dataset[index_used]
+    #img:Tensor
     #visualize_image(img)
        
        
@@ -66,35 +69,75 @@ def Step1(model_name=modelname,model:nn.Module=CNN()):
     model
     model.load_state_dict(torch.load("Task4/Model/"+modelname+"/"+modelname+".pth"))  
     model.eval()
-    img = img.unsqueeze(0)
-    img.requires_grad_(True)
-    
-    output=model(img)
-    pred = output.argmax(dim=1)
-    print("before attack the picture is predicted as: ", pred.item())
+    predictions=[]
+    predictions_att=[]
+    pics=[]
+    attacked_pics=[]
+    confidence=[]
+    confidence_attack=[]
+    for i in range(3):
+
+        index_used=random.choice(indices_list)
+        img,_=testdata.dataset[index_used]
+        img = img.unsqueeze(0)
+        img.requires_grad_(True)
+        F=nn.functional
+        output=model(img)
+        pred = output.argmax(dim=1)
+        probs = F.softmax(output, dim=1)
+        conf, _ = probs.max(dim=1)
+
+        
+        print("before attack the picture is predicted as: ", pred.item())
+        
 
 
-    target = torch.tensor([9])
+        target = torch.tensor([9])
 
 
-    criterion = nn.CrossEntropyLoss()
-    loss = criterion(output, target)
-    model.zero_grad()
-    loss.backward()
-    
-    epsilon = 0.2
-    perturbed = img - epsilon * img.grad.sign()
-    perturbed = torch.clamp(perturbed, 0, 1)
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(output, target)
+        model.zero_grad()
+        loss.backward()
+        
+        epsilon = 0.25
+        perturbed = img - epsilon * img.grad.sign()
+        perturbed = torch.clamp(perturbed, 0, 1)
 
-    output_attack=model(perturbed)
-    pred_attack = output_attack.argmax(dim=1)
-    print("After attack the picture is predicted as: ", pred_attack.item())
+        output_attack=model(perturbed)
+        pred_attack = output_attack.argmax(dim=1)
+        probs_att = F.softmax(output_attack, dim=1)
+        conf_att, _ = probs_att.max(dim=1)
+        
+        
+        predictions.append(pred.item())
+        predictions_att.append(pred_attack.item())
+        
+        pics.append(img)
+        attacked_pics.append(perturbed)
+        confidence.append(round(conf.item(),3))
+        confidence_attack.append(round(conf_att.item(),3))
 
-    visualize=input("do you wish to visualize the picture before and after? (y/n)")
+
+
+        print("After attack the picture is predicted as: ", pred_attack.item())
+
+    visualize=input("do you wish to visualize the before and after pictures? (y/n)")
     if visualize.lower()=="y":
-        print("first pic is the before. Close it to see the after!")
-        visualize_image(img.squeeze().detach())
-        visualize_image(perturbed.squeeze().detach())
+        plt.Figure()
+        plt.subplots_adjust(hspace=0.5, wspace=0.3)
+        plt.suptitle("Adveserial attack on images")
+        for i in range(len(attacked_pics)):
+
+            before="Before attack\n"+"prediction: " +str(predictions[i])+"\n confidance: "+ str(confidence[i])
+            after="After attack\n"+"prediction: "+str(predictions_att[i])+"\n confidance: "+ str(confidence_attack[i])
+        
+            plt.subplot(3, 2, 2*i+1)
+            visualize_image(pics[i].squeeze().detach(),title=before)
+            plt.subplot(3, 2, 2*i+2)
+
+            visualize_image(attacked_pics[i].squeeze().detach(), title=after)
+        plt.show()
 
 
 
@@ -118,24 +161,51 @@ def step2(modelname:str=modelname,model:nn.Module=CNN()):
     
     
     
-    optimizer=optim.Adam([noise],lr=0.1)
-    for i in range(100):
+    optimizer=optim.Adam([noise],lr=0.01)
+    Pictures=[]
+    predictions=[]
+    confidance=[]
+    for i in range(8):
         optimizer.zero_grad()
         output=model(noise)
+
+        Pictures.append(copy.deepcopy(noise))
+
+        prediction=output.argmax(dim=1).item()
+        predictions.append(prediction)
+        F=nn.functional
+        probs = F.softmax(output, dim=1)
+        conf, _ = probs.max(dim=1)
+        confidance.append(round(conf.item(),3))
+
         loss=criterion(output,target)
         loss.backward()
         optimizer.step()
-        if i%10==0:
-            print("prediction: ", output.argmax(dim=1).item())
-    print("final prediction: ",output.argmax(dim=1).item( ))
+        
+
+        if i%1==0:
+            #print("prediction: ", prediction)
+            #visualize_image(noise.squeeze().detach())
+            pass
+    
+    print("final prediction: ",prediction)
     inp=input("do you wish to visualize the random noise attack?(y/n)")
+    
     if inp.lower()=="y":
-        visualize_image(noise.squeeze().detach())
+        plt.figure()
+        plt.suptitle("Random noise attack")
+        plt.subplots_adjust(hspace=1, wspace=0.2)
+        for i in range(len(Pictures)):
+            noised =Pictures[i]
+            plt.subplot(4, 2, i+1)
+            ti=f"epoch: {i+1}\n"+"Prediction: "+str(predictions[i])+"\n Confidence: "+str(confidance[i])
+            visualize_image(noised.squeeze().detach(),title=ti) 
+        plt.show()
 
 
 
 if __name__=="__main__":
     print("first step, making a advesary attack")
-    Step1()
+    #Step1()
     print("second step. changing random noise until the model predicts it")
     step2()
