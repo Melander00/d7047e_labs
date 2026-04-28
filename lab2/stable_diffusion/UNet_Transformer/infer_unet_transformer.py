@@ -1,11 +1,10 @@
 import torch
-from torchvision.utils import make_grid
-import matplotlib.pyplot as plt
+from torchvision.utils import make_grid, save_image
+import os
 import numpy as np
 
 
 import sys
-import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
@@ -19,7 +18,7 @@ from stable_diffusion.unet_modules import (
 )
 
 
-def generate_grid(sample_batch_size=64, num_steps=250, digit=9, device='cuda'):
+def generate_grid(sample_batch_size=64, num_steps=250, digit=9, device='cuda', export_dir=None, file_name=None):
     ## Load the pre-trained checkpoint from disk.    
     score_model = torch.nn.DataParallel(UNet_Tranformer(marginal_prob_std=get_marginal_prob_std_fn()))
     score_model = score_model.to(device)
@@ -45,11 +44,25 @@ def generate_grid(sample_batch_size=64, num_steps=250, digit=9, device='cuda'):
     # Create a grid of samples for visualization
     sample_grid = make_grid(samples, nrow=int(np.sqrt(sample_batch_size)))
 
-    # Plot the generated samples
-    plt.figure(figsize=(6,6))
-    plt.axis('off')
-    plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
-    plt.show()
+    if export_dir is not None:
+        # Save the sample grid as an image file
+        os.makedirs(export_dir, exist_ok=True)
+        export_path = os.path.join(export_dir, file_name)
+        save_image(sample_grid, export_path)
+        print(f"Sample grid saved to {export_path}")
+    else:
+        # Plot the generated samples
+        import matplotlib
+
+        if not os.environ.get("DISPLAY"):
+            matplotlib.use("Agg")
+
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(6,6))
+        plt.axis('off')
+        plt.imshow(sample_grid.permute(1, 2, 0).cpu(), vmin=0., vmax=1.)
+        plt.show()
     
 def start_inference():
     while True:
