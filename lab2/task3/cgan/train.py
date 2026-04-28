@@ -1,8 +1,28 @@
+import os
+
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from time import time
+import torchvision
 from tqdm import tqdm
+
+
+def save_epoch_samples(G, Z_dim, device, save_dir, epoch):
+    """Save a grid of 10 samples (one per class) for the current epoch."""
+    G.eval()
+    os.makedirs(save_dir, exist_ok=True)
+
+    z = torch.randn(10, Z_dim).to(device)
+    labels = torch.arange(0, 10).to(device)
+
+    with torch.no_grad():
+        fake = G(z, labels).view(-1, 1, 28, 28)
+
+    torchvision.utils.save_image(
+        fake,
+        os.path.join(save_dir, f"{epoch}.png"),
+        nrow=10,
+        normalize=True,
+    )
+    G.train()
 
 
 def train_cgan(
@@ -16,6 +36,7 @@ def train_cgan(
     num_epochs,
     device,
     show_epoch_output=True,
+    sample_img_dir=None,    # e.g. "./output/cgan/50/img" — enables per-epoch saves
 ):
     G = generator
     D = discriminator
@@ -35,7 +56,6 @@ def train_cgan(
         epoch_g_loss = 0.0
         epoch_d_loss = 0.0
 
-        # Progress bar
         pbar = tqdm(train_loader, desc=f"Epoch {epoch}/{num_epochs}")
 
         for real_imgs, labels in pbar:
@@ -49,7 +69,8 @@ def train_cgan(
             z = torch.randn(batch_size, Z_dim).to(device)
             fake_imgs = G(z, labels)
 
-            real_targets = torch.ones(batch_size, 1).to(device)
+            # Label smoothing: 0.9 prevents D from becoming overconfident
+            real_targets = torch.full((batch_size, 1), 0.9).to(device)
             fake_targets = torch.zeros(batch_size, 1).to(device)
 
             real_logits = D(real_imgs, labels)
@@ -70,7 +91,7 @@ def train_cgan(
             fake_imgs = G(z, labels)
             fake_logits = D(fake_imgs, labels)
 
-            g_loss = criterion(fake_logits, real_targets)
+            g_loss = criterion(fake_logits, torch.ones(batch_size, 1).to(device))
 
             g_optimizer.zero_grad()
             g_loss.backward()
@@ -79,10 +100,8 @@ def train_cgan(
             epoch_g_loss += g_loss.item()
             epoch_d_loss += d_loss.item()
 
-            # Update progress bar text
-            pbar.set_postfix({"G": g_loss.item(), "D": d_loss.item()})
+            pbar.set_postfix({"G": f"{g_loss.item():.4f}", "D": f"{d_loss.item():.4f}"})
 
-        # Average losses
         epoch_g_loss /= len(train_loader)
         epoch_d_loss /= len(train_loader)
 
@@ -96,5 +115,9 @@ def train_cgan(
             best_g_loss = epoch_g_loss
             best_pair["G"] = G.state_dict()
             best_pair["D"] = D.state_dict()
+
+        # Save one sample grid per epoch for TensorBoard visualisation
+        if sample_img_dir is not None:
+            save_epoch_samples(G, Z_dim, device, sample_img_dir, epoch)
 
     return best_pair, best_g_loss, G_losses, D_losses
