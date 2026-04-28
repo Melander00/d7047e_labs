@@ -107,7 +107,7 @@ def generate_tensorboard_files(model_name: str, version: str):
 
 def main():
     model_name = "logit_gan"
-    versions = ["5", "10", "50"]   # The 3 runs you already trained
+    versions = ["5", "10", "50", "100"]   # All 4 training runs
 
     print("=" * 50)
     print("Generating TensorBoard files for Task 2 (Logit GAN)")
