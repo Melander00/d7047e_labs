@@ -109,7 +109,7 @@ def run_logit_gan(num_epochs: int):
 
 def main():
     # Run for all three epoch counts as required by Task 2
-    for epochs in [5, 10, 50]:
+    for epochs in [5, 10, 50, 100]:
         run_logit_gan(num_epochs=epochs)
 
     print("\n" + "="*40)
