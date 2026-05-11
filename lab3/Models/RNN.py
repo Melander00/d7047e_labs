@@ -9,7 +9,7 @@ class CaptionRNN(nn.Module):
         hidden_size=512
 
         
-        self.featurefc=nn.Linear(256,embed)
+        self.featurefc=nn.Linear(128,embed)
 
         self.emb=nn.Embedding(embedding_dim=embed,num_embeddings=vocab_size
                      )
@@ -19,7 +19,8 @@ class CaptionRNN(nn.Module):
         self.rec=nn.LSTM(
             input_size=embed,
             hidden_size=hidden_size,
-            num_layers=1,
+            num_layers=2,
+            dropout=0.2,
             batch_first=True,
 
         )
