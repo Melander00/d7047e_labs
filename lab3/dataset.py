@@ -106,7 +106,7 @@ class MyCollate:
         captions = [item[1] for item in batch]
         captions = torch.nn.utils.rnn.pad_sequence(
             captions,
-            batch_first=False,
+            batch_first=True,
             padding_value=self.pad_idx
         )
 
