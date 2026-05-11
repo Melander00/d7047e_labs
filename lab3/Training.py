@@ -57,9 +57,20 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
     #------metaparameters:
     model_cnn=model_cnn.to(device)
     model_RNN=model_RNN.to(device)
-    criterion=nn.CrossEntropyLoss()
+    pad_idx = dataset.vocab.stoi["<PAD>"]
+    criterion=nn.CrossEntropyLoss(ignore_index=pad_idx)
     lr=1e-3
-    optimizer=optim.Adam(model_RNN.parameters(), lr=lr)
+    #optimizer=optim.Adam(model_RNN.parameters(), lr=lr)
+
+    optimizer = optim.Adam(
+    list(model_cnn.parameters()) +
+    list(model_RNN.parameters()),
+    lr=lr
+    )
+
+
+
+
 
     best_valloss=float('inf')
     train_accs=[]
@@ -176,13 +187,20 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
 
 
 #TODO add a parameter for the cnn and rnn model used, and load them respectivally 
-def runsavedmodel(modelname:str, data_loader:DataLoader, model:nn.Module):
+def runsavedmodel(modelname:str, data_loader:DataLoader, model_CNN:nn.Module,model_RNN:nn.Module):
     print("testing model")
     
-    path=savepath+modelname+"/"+modelname+".pth"
-    model.load_state_dict(torch.load(path))
-    model=model.to(device)
-    model.eval()
+    path_CNN=os.path.join(savepath,modelname,modelname+"_CNN.pth")
+    path_RNN=os.path.join(savepath,modelname,modelname+"_RNN.pth")
+    model_CNN.load_state_dict(torch.load(path_CNN))
+    model_RNN.load_state_dict(torch.load(path_RNN))
+   
+    model_CNN=model_CNN.to(device)
+    model_RNN=model_RNN.to(device)
+    model_CNN.eval()
+    model_RNN.eval()
+
+
     predictions=[]
     real_labels=[]
     with torch.no_grad():
@@ -190,10 +208,19 @@ def runsavedmodel(modelname:str, data_loader:DataLoader, model:nn.Module):
             data = data.to(device)
             label = label.to(device)
 
-            output = model(data)
-            pred = output.argmax(dim=1)
+            inputs = label[:, :-1]
+
+            features = model_CNN(data)
+
+            output = model_RNN(features, inputs)
+
+            output = output[:, 1:, :]
+
+            pred = output.argmax(dim=2)
+
             predictions.append(pred)
-            real_labels.append(label)
+
+            real_labels.append(label[:, 1:])
 
 
 
