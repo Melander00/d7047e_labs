@@ -53,3 +53,50 @@ class CaptionRNN(nn.Module):
         
 
         return outputs
+    
+
+
+
+
+    def generate_caption(self, features, vocab, max_length=20):
+
+            result = []
+
+            hidden = None
+
+            # project image features
+            inputs = self.featurefc(features)
+
+            # add sequence dimension
+            inputs = inputs.unsqueeze(1)
+
+            for _ in range(max_length):
+
+                # LSTM forward
+                output, hidden = self.rec(inputs, hidden)
+
+                # output:
+                # (batch, seq_len=1, hidden)
+
+                output = self.fc(output[:, -1, :])
+
+                # choose best token
+                predicted = output.argmax(dim=1)
+
+                predicted_idx = predicted.item()
+
+                word = vocab.itos[predicted_idx]
+
+                if word == "<EOS>":
+                    break
+
+                if word not in ["<SOS>", "<PAD>"]:
+                    result.append(word)
+
+                # next input token
+                inputs = self.emb(predicted)
+
+                # add seq dimension
+                inputs = inputs.unsqueeze(1)
+
+            return " ".join(result)  
