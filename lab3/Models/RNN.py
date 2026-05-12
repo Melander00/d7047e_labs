@@ -3,13 +3,13 @@ import torch.nn as nn
 
 
 class CaptionRNN(nn.Module):
-    def __init__(self,vocab_size:int,):
+    def __init__(self,vocab_size:int,input_features = 128):
         super().__init__()
         embed=256
         hidden_size=512
 
         
-        self.featurefc=nn.Linear(128,embed)
+        self.featurefc=nn.Linear(input_features,embed)
 
         self.emb=nn.Embedding(embedding_dim=embed,num_embeddings=vocab_size
                      )
