@@ -25,7 +25,7 @@ def wordprint(sample_pred,sample_target,dataset):
     pred_words = []
     target_words = []
 
-    for idx in sample_pred:
+    '''for idx in sample_pred:
 
         word = dataset.vocab.itos[idx.item()]
 
@@ -33,7 +33,7 @@ def wordprint(sample_pred,sample_target,dataset):
             break
 
         if word not in ["<PAD>", "<SOS>"]:
-            pred_words.append(word)
+            pred_words.append(word)'''
 
     for idx in sample_target:
 
@@ -45,7 +45,7 @@ def wordprint(sample_pred,sample_target,dataset):
         if word not in ["<PAD>", "<SOS>"]:
             target_words.append(word)
     print("-----------------------------")
-    print("PRED :", " ".join(pred_words))
+    #print("PRED :", " ".join(pred_words))
     print("TRUE :", " ".join(target_words))
     print("-----------------------------")
 
@@ -140,7 +140,7 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
                 pred = output.argmax(dim=2)
                 val_correct+=(pred==targets).sum().item()
                 val_total+=label.size(0)
-                wordprint(sample_pred=pred[0],sample_target=targets[0],dataset=dataset)
+                #wordprint(sample_pred=pred[0],sample_target=targets[0],dataset=dataset)
                 valloss += loss.item()
 
         val_acc=val_correct/val_total
@@ -187,7 +187,7 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
 
 
 #TODO add a parameter for the cnn and rnn model used, and load them respectivally 
-def runsavedmodel(modelname:str, data_loader:DataLoader, model_CNN:nn.Module,model_RNN:nn.Module):
+def runsavedmodel(modelname:str, data_loader:DataLoader,vocab, model_CNN:nn.Module,model_RNN:nn.Module):
     print("testing model")
     
     path_CNN=os.path.join(savepath,modelname,modelname+"_CNN.pth")
@@ -208,7 +208,7 @@ def runsavedmodel(modelname:str, data_loader:DataLoader, model_CNN:nn.Module,mod
             data = data.to(device)
             label = label.to(device)
 
-            inputs = label[:, :-1]
+            '''inputs = label[:, :-1]
 
             features = model_CNN(data)
 
@@ -220,8 +220,32 @@ def runsavedmodel(modelname:str, data_loader:DataLoader, model_CNN:nn.Module,mod
 
             predictions.append(pred)
 
-            real_labels.append(label[:, 1:])
+            real_labels.append(label[:, 1:])'''
+            
+            features = model_CNN(data)
 
+            for i in range(data.size(0)):
+
+                pred = model_RNN.generate_caption(
+                    features[i].unsqueeze(0),
+                    vocab=vocab
+                )
+
+                predictions.append(pred)
+
+                real = []
+
+                for idx in label[i]:
+
+                    word = vocab.itos[idx.item()]
+
+                    if word == "<EOS>":
+                        break
+
+                    if word not in ["<SOS>", "<PAD>"]:
+                        real.append(word)
+
+                real_labels.append(" ".join(real))
 
 
 
