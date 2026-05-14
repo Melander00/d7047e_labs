@@ -3,6 +3,7 @@ import torch
 from dataset import get_loaders
 from Combinations.Combination_Trainer import train_model
 
+
 def main(data_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -20,4 +21,4 @@ def main(data_dir):
 
 
 if __name__ == "__main__":
-    main("data")
+    main("Data")

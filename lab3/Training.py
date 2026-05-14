@@ -7,6 +7,7 @@ import os
 import time
 import json
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from Models.CNN import CNN
 from Models.RNN import CaptionRNN
 
@@ -54,6 +55,10 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
     print("checkpoint 1")
     (train_loader, val_loader,_),dataset=loaders("Data")
     print("checkpoint 2")
+    
+    # Initialize TensorBoard writer
+    writer = SummaryWriter(f"runs/{model_name}")
+    
     #------metaparameters:
     model_cnn=model_cnn.to(device)
     model_RNN=model_RNN.to(device)
@@ -163,6 +168,49 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
         print(epoch+1)
         print(train_loss,": ", train_acc)
         print(valloss,": ", val_acc)
+
+        # --- TensorBoard Logging ---
+        writer.add_scalar("Loss/Train", train_loss, epoch)
+        writer.add_scalar("Loss/Val", valloss, epoch)
+        writer.add_scalar("Accuracy/Train", train_acc, epoch)
+        writer.add_scalar("Accuracy/Val", val_acc, epoch)
+
+        # Log a sample caption to see evolution
+        model_cnn.eval()
+        model_RNN.eval()
+        with torch.no_grad():
+            sample_img, sample_cap = next(iter(val_loader))
+            sample_img = sample_img[0:1].to(device)
+            
+            # Extract features and generate
+            features = model_cnn(sample_img)
+            # Use generate_caption if it exists, otherwise argmax
+            if hasattr(model_RNN, 'generate_caption'):
+                generated = model_RNN.generate_caption(features, vocab=dataset.vocab)
+            else:
+                # Fallback for base RNN which uses teacher forcing mostly
+                # We'll just take a simple argmax of the first validation batch output
+                pass 
+            
+            # Since our RNN models have generate_caption or we can use wordprint logic
+            # Let's get a clean string
+            real_caption = []
+            for idx in sample_cap[0]:
+                word = dataset.vocab.itos[idx.item()]
+                if word == "<EOS>": break
+                if word not in ["<PAD>", "<SOS>"]: real_caption.append(word)
+            
+            # For the log, we'll use the wordprint-like logic on the validation prediction
+            # from the last batch processed in the val_loop (pred[0])
+            pred_words = []
+            for idx in pred[0]:
+                word = dataset.vocab.itos[idx.item()]
+                if word == "<EOS>": break
+                if word not in ["<PAD>", "<SOS>"]: pred_words.append(word)
+            
+            gen_text = " ".join(pred_words)
+            ref_text = " ".join(real_caption)
+            writer.add_text("Captions/Evolution", f"**Epoch {epoch+1}**\n\n**Gen:** {gen_text}\n\n**Ref:** {ref_text}", epoch)
     traintime=time.time()-start
     print("traintime: ", traintime)
    
@@ -180,6 +228,8 @@ def Trainmodel(vocab_size:int, save_metadata:bool ,save_best: bool, epochs:int, 
         with open(path_meta, "w") as f:
             json.dump(data_meta, f)
             print("Meta-data saved")
+    
+    writer.close()
     
 
 
