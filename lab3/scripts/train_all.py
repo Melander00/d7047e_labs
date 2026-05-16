@@ -3,7 +3,7 @@ from scripts.train_resnet import main as res
 from scripts.train_base import main as base
 
 
-def main(data_dir = "data"):
+def main(data_dir = "Data"):
     att(data_dir)
     res(data_dir)
     base(data_dir)
