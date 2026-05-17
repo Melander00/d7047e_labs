@@ -1,116 +1,104 @@
+import os
 import torch
+import random
+import glob
 from PIL import Image
 from torchvision import transforms
-from Models.CNN import CNN
-from Models.RNN import CaptionRNN
 from dataset import get_loaders
-import os
-import random
 
-# ============================================================
-# CONFIGURE THIS: Path to your Flickr8k data folder
-# The folder must contain: Images/ subfolder + captions.txt
-# Example: DATA_DIR = "/home/user/flickr8k"
-# ============================================================
+# Import our models
+from Combinations.Base import BaseCaption
+from Combinations.ResNet import ResNetCaption
+from Combinations.Attention import AttentionCaption
+
 DATA_DIR = "Data"
 
-
-def run_multiple_captions(image_paths, model_name="steve"):
+def run_inference_on_custom_images():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
 
     # 1. Load Vocabulary from the dataset
     try:
         _, dataset = get_loaders(DATA_DIR)
         vocab = dataset.vocab
-        print(f"✅ Vocabulary loaded — {len(vocab)} words")
+        vocab_size = len(vocab)
+        print(f"✅ Vocabulary loaded — {vocab_size} words")
     except Exception as e:
         print(f"❌ Error loading vocabulary: {e}")
-        print(f"   → Make sure DATA_DIR is set correctly at the top of this file.")
+        print("   → Please make sure you are running this where 'Data/captions.txt' is accessible.")
         return
 
-    # 2. Initialize and Load Models (Only once for all images)
-    model_cnn = CNN().to(device)
-    model_rnn = CaptionRNN(vocab_size=len(vocab)).to(device)
+    # 2. Find any custom images in the current folder (lab3/)
+    # It will search for any .jpg, .jpeg, or .png files that the user placed there.
+    image_extensions = ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"]
+    image_paths = []
+    for ext in image_extensions:
+        image_paths.extend(glob.glob(ext))
+    
+    # Exclude dummy/test files if needed
+    image_paths = [p for p in image_paths if os.path.basename(p) != "test.jpg"]
 
-    try:
-        model_cnn.load_state_dict(torch.load(
-            f"SavedModels/{model_name}/{model_name}_CNN.pth", map_location=device))
-        model_rnn.load_state_dict(torch.load(
-            f"SavedModels/{model_name}/{model_name}_RNN.pth", map_location=device))
-        print(f"✅ Weights loaded for '{model_name}' model (using {device.type.upper()})")
-    except Exception as e:
-        print(f"❌ Error loading weights: {e}")
+    if not image_paths:
+        print("\n🔍 No custom test images found in the current folder!")
+        print("💡 Place 3 or 4 of your own images (e.g. dog.jpg, cat.jpg) inside the 'lab3/' folder first, then run this script.")
         return
 
-    model_cnn.eval()
-    model_rnn.eval()
+    print(f"🖼️  Found {len(image_paths)} image(s) to caption: {', '.join(image_paths)}")
 
-    # 3. Prepare Transform (same as training)
+    # 3. Load all three models
+    models = {}
+    model_configs = {
+        "base": BaseCaption,
+        "resnet": ResNetCaption,
+        "attention": AttentionCaption
+    }
+
+    print("\nLoading trained models...")
+    for model_name, model_class in model_configs.items():
+        weights_path = f"SavedModels/{model_name}/best_comb.pth"
+        if os.path.exists(weights_path):
+            try:
+                model = model_class(vocab_size).to(device)
+                model.load_state_dict(torch.load(weights_path, map_location=device))
+                model.eval()
+                models[model_name] = model
+                print(f"  ✅ {model_name.upper()} model loaded successfully.")
+            except Exception as e:
+                print(f"  ❌ Error loading {model_name} model: {e}")
+        else:
+            print(f"  ⚠️  No weights found for {model_name} at {weights_path} (Skipping).")
+
+    if not models:
+        print("❌ No trained models could be loaded. Please check your 'SavedModels/' directory.")
+        return
+
+    # 4. Prepare Transform
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
     ])
 
-    print("\n" + "=" * 50)
-    print(f"   🔍 GENERATING CAPTIONS — Model: {model_name}")
-    print("=" * 50)
+    # 5. Generate captions and compare
+    print("\n" + "=" * 65)
+    print("🔮  QUALITATIVE EVALUATION — SIDE-BY-SIDE CAPTION COMPARISON  🔮")
+    print("=" * 65)
 
-    # 4. Loop through all images and generate captions
     for i, path in enumerate(image_paths, 1):
-        if not os.path.exists(path):
-            print(f"\n[{i}] ❌ File not found: {path}")
-            continue
-
+        print(f"\n[{i}] 🖼️  Image: {os.path.basename(path)}")
+        print("-" * 65)
+        
         try:
             image = Image.open(path).convert("RGB")
             image_tensor = transform(image).unsqueeze(0).to(device)
 
             with torch.no_grad():
-                features = model_cnn(image_tensor)
-                caption = model_rnn.generate_caption(features, vocab=vocab)
-
-            print(f"\n[{i}] 🖼️  {os.path.basename(path)}")
-            print(f"     💬  {caption}")
+                for model_name, model in models.items():
+                    caption = model.generate_caption(image_tensor, vocab)
+                    print(f"   💬 {model_name.upper():<10}: {caption}")
         except Exception as e:
-            print(f"\n[{i}] ❌ Error processing {path}: {e}")
-
-    print("\n" + "=" * 50)
-
+            print(f"   ❌ Error processing image: {e}")
+            
+    print("\n" + "=" * 65)
 
 if __name__ == "__main__":
-    # ============================================================
-    # STEP 1: Choose your model
-    # Options: "base", "resnet", "attention"
-    # "base" → uses the "steve" saved weights
-    # ============================================================
-    model_type = "base"
-
-    # ============================================================
-    # STEP 2: Get 4 random images from the test split automatically
-    # ============================================================
-    my_images = []
-    try:
-        loaders, dataset = get_loaders(DATA_DIR)
-        test_loader = loaders[2]  # 15% test split
-
-        print("📥 Sampling 4 images from the test split...")
-        test_indices = test_loader.dataset.indices
-        sample_indices = random.sample(list(test_indices), 4)
-
-        for idx in sample_indices:
-            img_name = dataset.images[idx]
-            full_path = os.path.join(DATA_DIR, "Images", img_name)
-            my_images.append(full_path)
-
-    except Exception as e:
-        print(f"⚠️  Could not load test split: {e}")
-        print("   → Make sure DATA_DIR is set correctly at the top of this file.")
-
-    # ============================================================
-    # STEP 3: Run captioning
-    # ============================================================
-    if my_images:
-        folder = "steve" if model_type == "base" else model_type
-        run_multiple_captions(my_images, model_name=folder)
-    else:
-        print("❌ No images found. Cannot run inference.")
+    run_inference_on_custom_images()
