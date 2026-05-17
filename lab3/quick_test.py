@@ -1,4 +1,6 @@
 import os
+os.environ['TORCH_HOME'] = '/home/d7047e_labs/torch_cache'
+
 import torch
 import random
 import glob
