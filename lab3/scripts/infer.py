@@ -41,7 +41,7 @@ def infer(image_path: str, model: CaptionModel, vocab, max_length = 20):
 def main(image_path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    loaders, dataset = get_loaders("data")
+    loaders, dataset = get_loaders("Data")
 
     vocab = dataset.vocab
 
