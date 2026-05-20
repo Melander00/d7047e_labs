@@ -133,9 +133,85 @@ def save_model(
 
     
 
+def _save_tensorboard_embeddings(output_dir: str, model: nn.Module, loader, device):
+    target_layer = None
+    if hasattr(model, "fc"):
+        target_layer = model.fc
+    else:
+        for module in model.modules():
+            if isinstance(module, nn.Linear):
+                target_layer = module
+
+    if target_layer is None:
+        print("No linear layer found for embedding extraction; skipping projector.")
+        return
+
+    captured_embeddings = []
+
+    def _hook(module, input, output):
+        captured_embeddings.append(input[0].detach().cpu())
+
+    hook = target_layer.register_forward_hook(_hook)
+
+    model.eval()
+    labels_list = []
+    with torch.no_grad():
+        for batch in loader:
+            inputs, labels = batch
+            inputs = inputs.to(device)
+            _ = model(inputs)
+            labels_list.append(labels.detach().cpu())
+
+    hook.remove()
+
+    if len(captured_embeddings) == 0:
+        print("No embeddings captured (empty loader?).")
+        return
+
+    embeddings = torch.cat(captured_embeddings, dim=0)
+    labels_tensor = torch.cat(labels_list, dim=0)
+
+    metadata_str = []
+    raw_dataset = getattr(loader, "dataset", None)
+    subset_indices = getattr(raw_dataset, "indices", None)
+    base_dataset = getattr(raw_dataset, "dataset", None)
+    if subset_indices is not None and hasattr(base_dataset, "get_raw_item"):
+        for subset_idx in subset_indices:
+            text, _ = base_dataset.get_raw_item(subset_idx)
+            metadata_str.append(text.replace("\t", " ").replace("\n", " "))
+    else:
+        sentiment_map = {0: "negative", 1: "positive"}
+        metadata_str = [sentiment_map.get(label.item(), str(label.item())) for label in labels_tensor]
+
+    tb_logdir = os.path.join(output_dir, "tensorboard")
+    os.makedirs(tb_logdir, exist_ok=True)
+
+    writer = SummaryWriter(log_dir=tb_logdir)
+    writer.add_embedding(mat=embeddings, metadata=metadata_str, tag="cls_embeddings", global_step=0)
+    writer.flush()
+    writer.close()
+
+    with open(os.path.join(tb_logdir, "metadata.tsv"), "w", encoding="utf-8") as f:
+        f.write("sentence\n")
+        for sentence in metadata_str:
+            f.write(f"{sentence}\n")
+
+    torch.save({"embeddings": embeddings, "labels": labels_tensor}, os.path.join(tb_logdir, "embeddings.pt"))
 
 
+def _save_word_embeddings(output_dir: str, embeddings_tensor: torch.Tensor, tokens, tag: str = "word_embeddings"):
+    tb_logdir = os.path.join(output_dir, "tensorboard_words")
+    os.makedirs(tb_logdir, exist_ok=True)
 
+    writer = SummaryWriter(log_dir=tb_logdir)
+    writer.add_embedding(mat=embeddings_tensor, metadata=list(tokens), tag=tag, global_step=0)
+    writer.flush()
+    writer.close()
+
+    with open(os.path.join(tb_logdir, "metadata.tsv"), "w", encoding="utf-8") as f:
+        f.write("word\n")
+        for token in tokens:
+            f.write(f"{token}\n")
 
 
 def develop_model(
@@ -160,6 +236,7 @@ def develop_model(
 
     print(f"Saving {model_name}:{iteration_number}")
     output_dir = f"./output/{model_name}/{iteration_number}"
+    tensorboard_dir = f"./runs/{model_name}/{iteration_number}"
     save_model(
         output_dir=output_dir,
         metadata=metadata,
@@ -167,6 +244,49 @@ def develop_model(
         optimizer=optimizer,
         best_model=best_model
     )
+
+    try:
+        device = next(model.parameters()).device
+        best_or_last_model = best_model if best_model is not None else last_model
+        _save_tensorboard_embeddings(tensorboard_dir, best_or_last_model.to(device), loaders[2], device)
+    except Exception as e:
+        print(f"Failed to save TensorBoard sentence embeddings: {e}")
+
+    # Auto-detect and export BERT word embeddings
+    try:
+        best_or_last_model = best_model if best_model is not None else last_model
+        if hasattr(best_or_last_model, "bert"):
+            from transformers import AutoTokenizer
+            tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+            vocab = tokenizer.get_vocab()
+            tokens = [token for token, idx in sorted(vocab.items(), key=lambda item: item[1])]
+            word_embeddings = best_or_last_model.bert.embeddings.word_embeddings.weight
+            _save_word_embeddings(tensorboard_dir, word_embeddings.detach().cpu(), tokens)
+    except Exception as e:
+        print(f"Failed to save BERT word embeddings: {e}")
+
+    # Auto-detect LSTM embedding and export word embeddings if dataset provides tokens
+    try:
+        best_or_last_model = best_model if best_model is not None else last_model
+        # get test dataset from loaders
+        test_loader = loaders[2]
+        raw_dataset = getattr(test_loader, "dataset", None)
+        base_dataset = getattr(raw_dataset, "dataset", None) or raw_dataset
+        tokens = getattr(base_dataset, "vocab_tokens", None)
+        if tokens is not None and hasattr(best_or_last_model, "embedding"):
+            word_embeddings = best_or_last_model.embedding.weight
+            # Skip None placeholders (if any) and ensure tokens length matches embeddings
+            cleaned_tokens = [t if t is not None else "<UNK>" for t in tokens]
+            emb = word_embeddings.detach().cpu()
+            if emb.size(0) == len(cleaned_tokens):
+                _save_word_embeddings(tensorboard_dir, emb, cleaned_tokens)
+            else:
+                # If sizes don't match, try trimming/padding tokens
+                min_len = min(emb.size(0), len(cleaned_tokens))
+                _save_word_embeddings(tensorboard_dir, emb[:min_len], cleaned_tokens[:min_len])
+    except Exception as e:
+        print(f"Failed to save LSTM word embeddings: {e}")
+
     print("Development complete\n")
     return metadata
 

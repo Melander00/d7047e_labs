@@ -64,3 +64,25 @@ class ReviewDataset(Dataset):
             return torch.stack([input_ids, attention_mask], dim=0), torch.tensor(label)
 
         return text, torch.tensor(label)
+
+    def get_raw_item(self, idx):
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            f.seek(self.offsets[idx])
+            line = f.readline().strip()
+            sample = json.loads(line)
+
+        return sample["text"], torch.tensor(sample["label"])
+
+    def get_raw_item(self, idx):
+        with open(self.file_path, "r", encoding="utf-8") as f:
+            f.seek(self.offsets[idx])
+            line = f.readline().strip()
+            sample = json.loads(line)
+
+        text = sample["text"]
+        label = sample["label"]
+
+        if self.text_preprocessing is not None:
+            text = self.text_preprocessing(text)
+
+        return text, torch.tensor(label)

@@ -83,6 +83,12 @@ def exec_model(
     vocab = Vocab()
     vocab.build(simple_dataset, text_handler=text_handler, min_freq=2)
 
+    # Create an index->token list so other code (training) can export embeddings
+    tokens = [None] * vocab.size()
+    for token, idx in vocab.vocab.items():
+        if idx < len(tokens):
+            tokens[idx] = token
+
     labels = {'0': 0, '1': 0}
     for t, l in tqdm(simple_dataset, desc="Calculating label imbalance", leave=False):
         labels[str(l.item())] += 1
@@ -105,6 +111,12 @@ def exec_model(
         return torch.tensor(indices)
 
     loaders, dataset = loaders_fn(preprocess)
+
+    # Attach vocab tokens to dataset so training code can access them for projector
+    try:
+        dataset.vocab_tokens = tokens
+    except Exception:
+        pass
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 
